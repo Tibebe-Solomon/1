@@ -1,10 +1,19 @@
 import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string;
+
+// Provide a dummy URL at build time if env variables are missing to prevent Next.js from crashing
+// Note: You MUST set these environment variables in Render for the app to function properly!
+if (!supabaseUrl) {
+    console.warn("Missing NEXT_PUBLIC_SUPABASE_URL environment variable.");
+}
 
 // Client-side Supabase client (uses anon key — safe for browser)
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient(
+    supabaseUrl || "https://placeholder.supabase.co",
+    supabaseAnonKey || "placeholder"
+);
 
 // Types matching our DB schema
 export interface DbConversation {
