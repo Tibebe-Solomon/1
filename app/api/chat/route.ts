@@ -213,7 +213,12 @@ function buildSystemPrompt(body: ChatRequestBody, userMemories: string[] = []): 
     : "";
 
   const agentNote = (mode === "agent" || isAgent)
-    ? `\n\n✦ AGENT MODE TRIGGERED\nYou MUST open with a \`\`\`thinking\`\`\` block to plan. If ambiguous, end with ONE targeted clarifying question.`
+    ? `\n\n✦ AGENT MODE TRIGGERED - STRICT PROTOCOL
+You are operating autonomously to solve a user's complex problem.
+RULE 1: Open with a hidden \`\`\`thinking\`\`\` block to analyze the request.
+RULE 2: Evaluate if the request is perfectly clear or has missing variables (e.g., tech stack, exact goals, constraints).
+RULE 3: If ANYTHING is ambiguous, your entire visible response MUST ONLY BE TARGETED CLARIFYING QUESTIONS. Do NOT provide a generic solution. Do NOT guess. Stop and ask the user what they mean.
+RULE 4: If everything is perfectly clear, execute flawlessly with extreme formatting (headers, bolding, step-by-step logic).`
     : "";
 
   const memoryNote = userId

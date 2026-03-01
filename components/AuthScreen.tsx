@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { supabase } from "../lib/supabase";
 import { LogoMark } from "./LogoMark";
+import { PRIVACY_POLICY, TERMS_OF_SERVICE } from "../lib/LegalTexts";
 
 interface AuthScreenProps {
     onAuthSuccess: () => void;
@@ -18,6 +19,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess, onGuestMo
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
+    const [openLegalModal, setOpenLegalModal] = useState<"terms" | "privacy" | null>(null);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -201,10 +203,60 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess, onGuestMo
                     </span>
                 </button>
 
-                <p className="text-xs text-[color:var(--vynthen-fg-muted)] text-center opacity-60">
-                    By signing up you agree to our terms of service.
+                <p className="text-xs text-[color:var(--vynthen-fg-muted)] text-center opacity-80 mt-2">
+                    By signing up you agree to our{" "}
+                    <button
+                        type="button"
+                        onClick={() => setOpenLegalModal("terms")}
+                        className="underline hover:text-[color:var(--vynthen-fg)] transition-colors"
+                    >
+                        Terms of Service
+                    </button>{" "}
+                    and{" "}
+                    <button
+                        type="button"
+                        onClick={() => setOpenLegalModal("privacy")}
+                        className="underline hover:text-[color:var(--vynthen-fg)] transition-colors"
+                    >
+                        Privacy Policy
+                    </button>.
                 </p>
             </div>
+
+            {/* Legal Modal Overlay */}
+            {openLegalModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 backdrop-blur-sm bg-black/40 animate-in fade-in duration-200">
+                    <div className="w-full max-w-2xl max-h-[85vh] bg-[color:var(--vynthen-bg)] border border-[color:var(--vynthen-border)] rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+                        {/* Modal Header */}
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-[color:var(--vynthen-border)] bg-[color:var(--vynthen-bg-secondary)]">
+                            <h2 className="text-lg font-semibold text-[color:var(--vynthen-fg)]">
+                                {openLegalModal === "terms" ? "Terms of Service" : "Privacy Policy"}
+                            </h2>
+                            <button
+                                type="button"
+                                onClick={() => setOpenLegalModal(null)}
+                                className="w-8 h-8 flex items-center justify-center rounded-full text-[color:var(--vynthen-fg-muted)] hover:bg-[color:var(--vynthen-border)] hover:text-[color:var(--vynthen-fg)] transition-colors"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><path d="M18 6L6 18M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                        {/* Modal Content */}
+                        <div className="flex-1 overflow-y-auto p-6 text-[14px] leading-relaxed text-[color:var(--vynthen-fg)] whitespace-pre-wrap">
+                            {openLegalModal === "terms" ? TERMS_OF_SERVICE : PRIVACY_POLICY}
+                        </div>
+                        {/* Modal Footer */}
+                        <div className="px-6 py-4 border-t border-[color:var(--vynthen-border)] bg-[color:var(--vynthen-bg-secondary)] flex justify-end">
+                            <button
+                                type="button"
+                                onClick={() => setOpenLegalModal(null)}
+                                className="px-5 py-2 rounded-xl bg-[color:var(--vynthen-fg)] text-[color:var(--vynthen-bg)] font-medium hover:opacity-90 transition-opacity"
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
