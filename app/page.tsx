@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Sidebar } from "../components/Sidebar";
 import { ChatArea } from "../components/ChatArea";
 import { AuthScreen } from "../components/AuthScreen";
+import { OnboardingScreen } from "../components/OnboardingScreen";
 import type { Conversation, Message } from "../components/types";
 import { useVynthen } from "../context/VynthenContext";
 import { auth, db } from "../lib/firebase";
@@ -11,6 +12,7 @@ import { onAuthStateChanged, signOut, type User } from "firebase/auth";
 import {
   collection,
   addDoc,
+  getDoc,
   getDocs,
   updateDoc,
   deleteDoc,
@@ -24,7 +26,7 @@ import { loadSettings } from "../components/SettingsModal";
 import type { VynthenSettings } from "../components/SettingsModal";
 import type { InputMeta } from "../components/InputBox";
 
-type AppState = "loading" | "auth" | "app";
+type AppState = "loading" | "auth" | "onboarding" | "app";
 
 export default function HomePage() {
   const { theme, setTheme } = useVynthen();
@@ -64,10 +66,21 @@ export default function HomePage() {
 
   // ── Auth state listener ────────────────────────────────────────────────────
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (firebaseUser) => {
+    const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         setUser(firebaseUser);
-        loadConversations(firebaseUser.uid);
+        // Check for onboarding
+        try {
+          const profileSnap = await getDoc(doc(db, "profiles", firebaseUser.uid));
+          if (!profileSnap.exists()) {
+            setAppState("onboarding");
+          } else {
+            loadConversations(firebaseUser.uid);
+          }
+        } catch (err) {
+          console.error("Error checking profile:", err);
+          loadConversations(firebaseUser.uid); // Fallback to app even if profile check fails
+        }
       } else {
         setUser(null);
         setConversations([]);
@@ -405,6 +418,18 @@ export default function HomePage() {
     return (
       <div data-theme={theme}>
         <AuthScreen onAuthSuccess={handleAuthSuccess} onGuestMode={handleGuestMode} />
+      </div>
+    );
+  }
+
+  if (appState === "onboarding" && user) {
+    return (
+      <div data-theme={theme}>
+        <OnboardingScreen
+          userId={user.uid}
+          userEmail={user.email ?? ""}
+          onComplete={() => loadConversations(user.uid)}
+        />
       </div>
     );
   }

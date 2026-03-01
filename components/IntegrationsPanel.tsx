@@ -39,6 +39,7 @@ interface Props {
 
 export const IntegrationsPanel: React.FC<Props> = ({ isOpen, onClose, userId, onConnectionsChanged }) => {
     const [status, setStatus] = useState<IntegrationStatus>({ configured: {}, connected: {} });
+    const [config, setConfig] = useState<{ google?: { clientId: string }; github?: { clientId: string } }>({});
     const [loading, setLoading] = useState<Record<string, boolean>>({});
     const [confirmModal, setConfirmModal] = useState<ConfirmModal>({ show: false, integrationId: "", action: "", riskLevel: "", message: "", params: {} });
 
@@ -52,6 +53,12 @@ export const IntegrationsPanel: React.FC<Props> = ({ isOpen, onClose, userId, on
                 .filter(([, v]) => v)
                 .map(([k]) => k);
             onConnectionsChanged(connected);
+        }
+
+        const configRes = await fetch("/api/integrations/config");
+        if (configRes.ok) {
+            const configData = await configRes.json();
+            setConfig(configData);
         }
     }, [userId, onConnectionsChanged]);
 
@@ -89,7 +96,7 @@ export const IntegrationsPanel: React.FC<Props> = ({ isOpen, onClose, userId, on
                 }
                 // Fallback: build URL client-side for immediate redirect
                 const params = new URLSearchParams({
-                    client_id: "522033869998-dui9gbeu452haiph8k28brhhmk830je8.apps.googleusercontent.com",
+                    client_id: config.google?.clientId || "MISSING_CLIENT_ID",
                     redirect_uri: `${window.location.origin}/api/integrations/google/callback`,
                     response_type: "code",
                     scope: ["https://www.googleapis.com/auth/gmail.readonly", "https://www.googleapis.com/auth/gmail.compose", "https://www.googleapis.com/auth/gmail.send", "https://www.googleapis.com/auth/drive.readonly", "https://www.googleapis.com/auth/drive.file", "https://www.googleapis.com/auth/calendar", "https://www.googleapis.com/auth/documents", "https://www.googleapis.com/auth/spreadsheets"].join(" "),
@@ -100,7 +107,7 @@ export const IntegrationsPanel: React.FC<Props> = ({ isOpen, onClose, userId, on
                 window.location.href = `https://accounts.google.com/o/oauth2/auth?${params.toString()}`;
             } else if (integration.id === "github") {
                 const params = new URLSearchParams({
-                    client_id: "Ov23liZRFg0O2HFAOfx0",
+                    client_id: config.github?.clientId || "MISSING_CLIENT_ID",
                     redirect_uri: `${window.location.origin}/api/integrations/github/callback`,
                     scope: "repo gist read:user",
                     state: userId,
@@ -211,7 +218,7 @@ export const IntegrationsPanel: React.FC<Props> = ({ isOpen, onClose, userId, on
                                     <div className="mt-3 flex items-center gap-2">
                                         {!isConfigured ? (
                                             <div className="text-xs text-[color:var(--vynthen-fg-muted)] bg-[color:var(--vynthen-bg)] border border-[color:var(--vynthen-border)] rounded-lg px-3 py-1.5 w-full text-center">
-                                                Integration not configured yet.
+                                                Not configured yet. Set env vars in your dashboard.
                                             </div>
                                         ) : isConnected ? (
                                             <button
