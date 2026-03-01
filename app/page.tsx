@@ -25,7 +25,7 @@ export default function HomePage() {
   const [session, setSession] = useState<Session | null>(null);
   const [connectedIntegrations, setConnectedIntegrations] = useState<string[]>([]);
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
-  const [settings, setSettings] = useState<VynthenSettings>({ personality: "balanced", instructions: "", language: "en" });
+  const [settings, setSettings] = useState<VynthenSettings>({ personality: "balanced", instructions: "", language: "en", voice: "casual", depth: "balanced", focus: "default", duality: false });
 
   // Vault state
   const [projects, setProjects] = useState<{ id: string; name: string }[]>([]);
