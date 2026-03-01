@@ -189,7 +189,7 @@ export async function POST(req: Request): Promise<Response> {
     const temperature = depthTemp[body.depth ?? "balanced"] ?? 0.4;
 
     const chatCompletion = await groq.chat.completions.create({
-      model: "llama-3.3-70b-versatile",
+      model: "llama-3.1-8b-instant",
       messages: messages as any[],
       stream: true,
       temperature,

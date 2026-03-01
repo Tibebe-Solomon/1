@@ -12,8 +12,82 @@ export const Lens: React.FC<LensProps> = ({ isOpen, onClose, code, language }) =
     const [srcDoc, setSrcDoc] = useState("");
 
     useEffect(() => {
-        if (language === "html" || language === "html/css") {
+        if (!code) {
+            setSrcDoc("");
+            return;
+        }
+        const lang = language?.toLowerCase() || "";
+        if (lang === "html" || lang === "html/css" || lang === "xml" || lang === "svg") {
             setSrcDoc(code);
+        } else if (lang === "css") {
+            setSrcDoc(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                  <style>
+                    body { font-family: system-ui, sans-serif; padding: 32px; color: #111; background: #fafafa; display: flex; flex-direction: column; gap: 16px; align-items: flex-start; }
+                    .preview-box { background: white; border: 1px solid #ddd; padding: 24px; border-radius: 12px; width: 100%; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+                    ${code}
+                  </style>
+                </head>
+                <body>
+                  <div class="preview-box">
+                    <h2>CSS Environment Preview</h2>
+                    <p>This is a sample layout injected to demonstrate your custom CSS rules.</p>
+                    <button class="btn button primary">Sample Button</button>
+                    <input type="text" placeholder="Sample Input" class="input card" />
+                  </div>
+                </body>
+                </html>
+            `);
+        } else if (lang === "javascript" || lang === "js" || lang === "typescript" || lang === "ts" || lang === "jsx" || lang === "tsx") {
+            // Encode code safely for the script tag to prevent breaking out of it
+            const scriptContent = code.replace(/<\/script>/gi, '<\\/script>');
+            setSrcDoc(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                  <style>
+                    body { font-family: system-ui, sans-serif; padding: 20px; color: #333; background: #fff; margin: 0; }
+                    pre { background: #f4f4f5; padding: 12px; border-radius: 8px; margin: 0; overflow-x: auto; font-size: 13px; line-height: 1.5; color: #18181b; }
+                    .error { color: #ef4444; font-weight: 500; }
+                    #output-container { display: flex; flex-direction: column; gap: 8px; }
+                  </style>
+                </head>
+                <body>
+                  <div id="output-container"></div>
+                  <script>
+                    const container = document.getElementById('output-container');
+                    const originalLog = console.log;
+                    const originalError = console.error;
+                    const originalWarn = console.warn;
+                    
+                    function appendLog(type, args) {
+                        const div = document.createElement('pre');
+                        if (type === 'error') div.className = 'error';
+                        if (type === 'warn') div.style.color = '#eab308';
+                        div.textContent = args.map(a => typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)).join(' ');
+                        container.appendChild(div);
+                    }
+
+                    console.log = function(...args) { appendLog('log', args); originalLog.apply(console, args); };
+                    console.error = function(...args) { appendLog('error', args); originalError.apply(console, args); };
+                    console.warn = function(...args) { appendLog('warn', args); originalWarn.apply(console, args); };
+                    
+                    window.onerror = function(msg, url, line) {
+                        appendLog('error', ['Uncaught Error:', msg, 'at line', line]);
+                        return false;
+                    };
+
+                    try {
+                        ${scriptContent}
+                    } catch(e) {
+                        console.error(e.toString());
+                    }
+                  </script>
+                </body>
+                </html>
+            `);
         } else {
             setSrcDoc(`
         <!DOCTYPE html>
@@ -22,7 +96,7 @@ export const Lens: React.FC<LensProps> = ({ isOpen, onClose, code, language }) =
           <style>body { font-family: system-ui, sans-serif; padding: 20px; color: #333; background: #fff; }</style>
         </head>
         <body>
-          <p>Preview not supported for ${language}. This only supports HTML output currently.</p>
+          <p>Preview not supported for ${language}. This environment executes HTML, CSS, JS, and TS.</p>
         </body>
         </html>
       `);

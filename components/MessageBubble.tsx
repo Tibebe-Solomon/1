@@ -23,7 +23,7 @@ const CodeBlock: React.FC<CodeBlockProps> = ({ language, value, children, onOpen
       <div className="flex items-center justify-between px-4 py-2 border-b border-[color:var(--vynthen-border)]">
         <span className="text-xs font-mono text-[color:var(--vynthen-fg-muted)] lowercase">{language || "text"}</span>
         <div className="flex items-center gap-2">
-          {onOpenLens && (language === "html" || language === "html/css") && (
+          {onOpenLens && language && ["html", "css", "javascript", "js", "typescript", "ts", "jsx", "tsx", "xml", "svg"].includes(language.toLowerCase()) && (
             <button type="button" onClick={() => onOpenLens(value, language)} className="flex items-center gap-1.5 px-2 py-0.5 rounded text-xs text-[color:var(--vynthen-fg)] bg-[color:var(--vynthen-bg-secondary)] border border-[color:var(--vynthen-border)] hover:bg-[color:var(--vynthen-border)] transition-colors">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-3 h-3"><path fillRule="evenodd" d="M14.615 1.595a.75.75 0 01.359.852L12.982 9.75h7.268a.75.75 0 01.548 1.262l-10.5 11.25a.75.75 0 01-1.272-.71l1.992-7.302H3.75a.75.75 0 01-.548-1.262l10.5-11.25a.75.75 0 01.913-.143z" clipRule="evenodd" /></svg>
               View in Lens
