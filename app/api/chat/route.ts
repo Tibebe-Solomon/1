@@ -1,4 +1,5 @@
-export const runtime = "edge";
+import Groq from "groq-sdk";
+import { createClient } from "@supabase/supabase-js";
 
 interface ChatMessage {
   role: "system" | "user" | "assistant";
@@ -11,42 +12,128 @@ interface ChatRequestBody {
   isAgent?: boolean;
   webSearchOn?: boolean;
   connectedIntegrations?: string[];
+  personality?: string;
+  instructions?: string;
+  language?: string;
+  // Phase 1 new params
+  voice?: string;       // professional | casual | enthusiastic | funny
+  depth?: string;       // precise | balanced | creative
+  focus?: string;       // default | web | code | writing | math | creative
+  skill?: string;       // none | code | write | research | analyze | coach
+  duality?: boolean;    // two answers: polished + raw
+  echo?: boolean;       // auto-detect language, reply in same
+  pulse?: boolean;      // detect mood, adjust warmth
+  userId?: string;      // Passed from frontend if logged in
 }
+
+const PERSONALITY_NOTES: Record<string, string> = {
+  balanced: "",
+  concise: " Be extremely concise. Give short, direct answers with no filler or excess explanation.",
+  detailed: " Be thorough and detailed. Explain every important aspect clearly and completely.",
+  creative: " Be imaginative, expressive, and inventive. Use vivid language and creative thinking.",
+  formal: " Maintain a formal, professional tone at all times. Use structured, precise language.",
+};
+
+const VOICE_NOTES: Record<string, string> = {
+  professional: " Use a formal, polished, professional communication style.",
+  casual: "",
+  enthusiastic: " Be highly enthusiastic, energetic, and encouraging. Use exclamation points strategically!",
+  funny: " Be witty and humorous. Use clever wordplay, friendly jokes, and light sarcasm where appropriate.",
+};
+
+const DEPTH_NOTES: Record<string, string> = {
+  precise: " Be extremely precise, factual, and conservative. Stick strictly to what you know. Avoid speculation.",
+  balanced: "",
+  creative: " Be imaginative and creative in your reasoning. Explore possibilities, make connections, be inventive.",
+};
+
+const FOCUS_NOTES: Record<string, string> = {
+  default: "",
+  web: " The user is asking about current events or web-based information. Simulate a thorough, well-cited web search response.",
+  code: " The user is asking about code or programming. Be a senior software engineer. Provide clean, elegant, working code with brief explanations.",
+  writing: " The user wants writing help. Be a skilled author. Focus on clarity, flow, tone, and impact.",
+  math: " The user needs mathematical help. Be a mathematician. Show your work clearly, step-by-step, with formulas.",
+  creative: " The user wants creative output. Be a creative director. Think boldly, make unexpected connections, surprise them.",
+};
+
+const SKILL_NOTES: Record<string, string> = {
+  none: "",
+  code: " @code skill ACTIVE: You are now operating as an elite software engineer. Write production-quality, well-commented code. Lead with code, explain after.",
+  write: " @write skill ACTIVE: You are now a professional writer and editor. Focus entirely on compelling prose, structure, and impact.",
+  research: " @research skill ACTIVE: You are now a research analyst. Provide deep, well-structured research with sources, context, and analysis.",
+  analyze: " @analyze skill ACTIVE: You are now a data analyst and critical thinker. Break down the problem logically, identify patterns, and draw clear conclusions.",
+  coach: " @coach skill ACTIVE — GUIDE MODE: You are now a Socratic life coach. Do NOT give direct answers. Instead, ask powerful, thoughtful questions that help the user discover insights themselves. Be warm, curious, and non-judgmental.",
+};
 
 const BASE_SYSTEM_PROMPT =
   'You are Vynthen, a highly intelligent, sharp, and capable AI assistant. You are direct, fast, and always helpful. You have two modes: Chat mode for conversation, Agent mode for breaking down and executing complex tasks step by step. Never mention you are built on Llama or Groq. You are Vynthen.';
 
-function buildSystemPrompt(body: ChatRequestBody): string {
-  const { mode, isAgent, webSearchOn, connectedIntegrations } = body;
-  const integrationNote =
-    connectedIntegrations && connectedIntegrations.length > 0
-      ? ` The user has connected the following apps: ${connectedIntegrations.join(
-        ", "
-      )}. You can reference these when relevant.`
-      : "";
+function buildSystemPrompt(body: ChatRequestBody, userMemories: string[] = []): string {
+  const {
+    mode, isAgent, webSearchOn, connectedIntegrations,
+    personality, instructions, language,
+    voice, depth, focus, skill, duality, echo, pulse, userId
+  } = body;
 
-  const webSearchNote = webSearchOn
-    ? " The user may ask you to 'search the web'. You cannot actually browse, but you should simulate a confident, detailed, well structured web search with plausible cited sources and dates, clearly marked as simulated."
+  const integrationNote = connectedIntegrations?.length
+    ? ` The user has connected: ${connectedIntegrations.join(", ")}. Reference these when relevant.`
     : "";
 
-  const modeNote =
-    (mode === "agent" || isAgent)
-      ? `\n\nAGENT MODE ACTIVE: You are operating as a high-speed, autonomous-like agent (similar to Z.ai). 
-You MUST format your response into two distinct parts:
-1. A fast, analytical thinking block at the top, showing your step-by-step reasoning or tool-use simulation. Use this EXACT format:
-   \`\`\`thinking
-   [Step 1...]
-   [Step 2...]
-   [Finalizing...]
-   \`\`\`
-2. Your actual final answer immediately below the closing backticks.
+  const webSearchNote = webSearchOn
+    ? " Simulate a confident, detailed web search with plausible cited sources when asked, clearly marked as simulated."
+    : "";
 
-Be extremely fast, concise, and structured. Break down complex tasks ruthlessly.`
-      : "";
+  const personalityNote = PERSONALITY_NOTES[personality ?? "balanced"] ?? "";
+  const voiceNote = VOICE_NOTES[voice ?? "casual"] ?? "";
+  const depthNote = DEPTH_NOTES[depth ?? "balanced"] ?? "";
+  const focusNote = FOCUS_NOTES[focus ?? "default"] ?? "";
+  const skillNote = SKILL_NOTES[skill ?? "none"] ?? "";
 
-  const imageGenNote = " If the user asks you to generate, create, draw, or imagine an image/picture, you MUST respond by returning a Markdown image using pollinations.ai. Format: `![Image Description](https://image.pollinations.ai/prompt/{url_encoded_detailed_prompt}?width=1024&height=1024&nologo=true)`. Replace {url_encoded_detailed_prompt} with a highly detailed, descriptive visual prompt of what they asked for, properly URL encoded. Do not say anything else, just return the markdown image.";
+  const instructionsNote = instructions?.trim()
+    ? ` CUSTOM INSTRUCTIONS (obey always): "${instructions.trim()}"`
+    : "";
 
-  return BASE_SYSTEM_PROMPT + integrationNote + webSearchNote + modeNote + imageGenNote;
+  const languageNote = language && language !== "en"
+    ? ` CRITICAL: Translate ALL responses to language code "${language}". Every word must be in that language.`
+    : "";
+
+  const echoNote = echo
+    ? " ECHO MODE: Detect what language the user is writing in and always respond in that exact same language."
+    : "";
+
+  const pulseNote = pulse
+    ? " PULSE MODE: Carefully detect the emotional tone of the user's message. If they seem stressed, be calming and supportive. If excited, match their energy. If confused, be patient and clear. Subtly adapt your warmth accordingly."
+    : "";
+
+  const dualityNote = duality
+    ? `\n\nDUALITY MODE ACTIVE: You MUST provide two versions of your answer, clearly separated:
+## ✦ Polished
+[A well-crafted, safe, professional answer]
+
+## ⚡ Raw
+[The same answer but brutally honest, unfiltered, and direct — no sugarcoating]`
+    : "";
+
+  const agentNote = (mode === "agent" || isAgent)
+    ? `\n\nAGENT MODE ACTIVE: Format response in two parts:
+1. \`\`\`thinking\n[Step 1...]\n[Step 2...]\n[Finalizing...]\n\`\`\`
+2. Your final answer immediately after.`
+    : "";
+
+  const memoryNote = userId
+    ? `\n\nCORE MEMORY ACTIVE. Here is what you currently know about the user:\n${userMemories.map(m => `- ${m}`).join("\n")}\nIf the user tells you a new fact about themselves (preferences, details, background), you MUST remember it by returning a special block exactly like this:\n[[remember: [fact here]]]\nBe proactive in remembering important details.`
+    : "";
+
+  const sparksNote = ` After every response, add a hidden block at the very end:\n\`\`\`sparks\n[Question 1?]\n[Question 2?]\n[Question 3?]\n[Question 4?]\n\`\`\`\nThese are 4 short, clickable follow-up questions the user might want to ask next. Make them genuinely useful and relevant.`;
+
+  const imageGenNote = " For image requests: `![Description](fal-image:detailed prompt)`. For video: `![Description](fal-video:detailed prompt)`.";
+
+  return BASE_SYSTEM_PROMPT
+    + personalityNote + voiceNote + depthNote + focusNote + skillNote
+    + instructionsNote + languageNote + echoNote + pulseNote
+    + integrationNote + webSearchNote + memoryNote
+    + agentNote + dualityNote
+    + sparksNote + imageGenNote;
 }
 
 export async function POST(req: Request): Promise<Response> {
@@ -54,69 +141,99 @@ export async function POST(req: Request): Promise<Response> {
     const body = (await req.json()) as ChatRequestBody;
 
     if (!Array.isArray(body.messages) || body.messages.length === 0) {
-      return new Response(
-        JSON.stringify({ error: "Request must include a messages array." }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Request must include a messages array." }), {
+        status: 400, headers: { "Content-Type": "application/json" }
+      });
     }
 
     const groqKey = process.env.GROQ_API_KEY;
     if (!groqKey) {
-      return new Response(
-        JSON.stringify({
-          error:
-            "GROQ_API_KEY is not configured on the server. Please set it in .env.local."
-        }),
-        { status: 500, headers: { "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "GROQ_API_KEY is not configured." }), {
+        status: 500, headers: { "Content-Type": "application/json" }
+      });
     }
 
-    const systemPrompt = buildSystemPrompt(body);
+    // Initialize admin Supabase client for backend operations
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    let userMemories: string[] = [];
+    let supabase: ReturnType<typeof createClient> | null = null;
 
-    const messages: ChatMessage[] = [
-      {
-        role: "system",
-        content: systemPrompt
-      },
-      ...body.messages
-    ];
+    if (supabaseUrl && supabaseServiceKey && body.userId) {
+      supabase = createClient(supabaseUrl, supabaseServiceKey);
+      // Cast the result to any[] to bypass generic type complaining about 'content'
+      const { data } = await supabase.from("memories").select("content").eq("user_id", body.userId);
+      if (data) {
+        userMemories = (data as any[]).map(m => m.content as string);
+      }
+    }
 
-    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${groqKey}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        model: "llama-3.1-8b-instant",
-        messages,
-        stream: true,
-        temperature: 0.4
-      })
+    const systemPrompt = buildSystemPrompt(body, userMemories);
+    const messages: ChatMessage[] = [{ role: "system", content: systemPrompt }, ...body.messages];
+
+    const groq = new Groq({ apiKey: groqKey });
+
+    // Adjust temperature based on depth
+    const depthTemp: Record<string, number> = { precise: 0.1, balanced: 0.4, creative: 0.85 };
+    const temperature = depthTemp[body.depth ?? "balanced"] ?? 0.4;
+
+    const chatCompletion = await groq.chat.completions.create({
+      model: "llama-3.1-8b-instant",
+      messages: messages as any[],
+      stream: true,
+      temperature,
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Groq API error: ${response.status} ${errorText}`);
-    }
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      async start(controller) {
+        let fullResponse = "";
+        try {
+          for await (const chunk of chatCompletion) {
+            const content = chunk.choices[0]?.delta?.content || "";
+            if (content) {
+              fullResponse += content;
+              controller.enqueue(encoder.encode(content));
+            }
+          }
 
-    // Return the response directly to stream it to the client
-    return new Response(response.body, {
+          // Post-process: check if AI decided to remember something
+          if (supabase && body.userId) {
+            const memoryRegex = /\[\[remember:\s*(.+?)\]\]/g;
+            let match;
+            while ((match = memoryRegex.exec(fullResponse)) !== null) {
+              const fact = match[1].trim();
+              if (fact) {
+                // Ignore TS error for the dynamic table name in generic client
+                await (supabase.from("memories") as any).insert({
+                  user_id: body.userId,
+                  content: fact
+                });
+              }
+            }
+          }
+
+        } catch (err) {
+          console.error("Stream error:", err);
+        } finally {
+          controller.close();
+        }
+      }
+    });
+
+    return new Response(stream, {
       status: 200,
       headers: {
-        "Content-Type": "text/event-stream; charset=utf-8",
+        "Content-Type": "text/plain; charset=utf-8",
         "Cache-Control": "no-cache, no-transform",
         Connection: "keep-alive"
       }
     });
 
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unexpected error in chat route.";
+    const message = error instanceof Error ? error.message : "Unexpected error.";
     return new Response(JSON.stringify({ error: message }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" }
+      status: 500, headers: { "Content-Type": "application/json" }
     });
   }
 }
-

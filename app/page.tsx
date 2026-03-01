@@ -8,6 +8,9 @@ import type { Conversation, Message } from "../components/types";
 import { useVynthen } from "../context/VynthenContext";
 import { supabase } from "../lib/supabase";
 import type { Session } from "@supabase/supabase-js";
+import { loadSettings } from "../components/SettingsModal";
+import type { VynthenSettings } from "../components/SettingsModal";
+import type { InputMeta } from "../components/InputBox";
 
 type AppState = "loading" | "auth" | "app";
 
@@ -20,7 +23,17 @@ export default function HomePage() {
   const [appState, setAppState] = useState<AppState>("loading");
   const [session, setSession] = useState<Session | null>(null);
   const [connectedIntegrations, setConnectedIntegrations] = useState<string[]>([]);
+  const [isLibraryOpen, setIsLibraryOpen] = useState(false);
+  const [settings, setSettings] = useState<VynthenSettings>({ personality: "balanced", instructions: "", language: "en" });
+
+  // Vault state
+  const [projects, setProjects] = useState<{ id: string; name: string }[]>([]);
+  const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
+
   const isGuest = session === null && appState === "app";
+
+  // Load settings on mount
+  useEffect(() => { setSettings(loadSettings()); }, []);
 
   const conversationsRef = useRef(conversations);
   useEffect(() => { conversationsRef.current = conversations; }, [conversations]);
@@ -64,9 +77,19 @@ export default function HomePage() {
 
   // ── Load conversations from Supabase (authenticated user only) ─────────────
   const loadConversations = async (userId: string) => {
+    // 1. Fetch Projects (Vault)
+    const { data: projData } = await supabase
+      .from("projects")
+      .select("id, name")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false });
+
+    setProjects(projData ?? []);
+
+    // 2. Fetch Conversations
     const { data: convData } = await supabase
       .from("conversations")
-      .select("id, title, created_at")
+      .select("id, title, project_id, created_at")
       .eq("user_id", userId)
       .order("created_at", { ascending: false });
 
@@ -79,6 +102,7 @@ export default function HomePage() {
     const loaded: Conversation[] = (convData ?? []).map((c) => ({
       id: c.id,
       title: c.title,
+      projectId: c.project_id ?? undefined,
       messages: messages
         .filter((m) => m.conversation_id === c.id)
         .map((m) => ({
@@ -125,16 +149,21 @@ export default function HomePage() {
   );
 
   // ── Core send: DB-backed (logged in) OR in-memory (guest) ─────────────────
-  const handleSend = async (text: string, isAgent?: boolean) => {
+  const handleSend = async (text: string, isAgent?: boolean, meta?: InputMeta) => {
     let convId = activeId;
     let baseMessages: Message[] = activeConversation?.messages ?? [];
 
     if (!convId) {
       if (!isGuest) {
         // Authenticated: persisted conversation
+        const insertData: any = { title: text.slice(0, 60) || "New chat", user_id: session!.user.id };
+        if (activeProjectId) {
+          insertData.project_id = activeProjectId;
+        }
+
         const { data: newConv, error } = await supabase
           .from("conversations")
-          .insert({ title: text.slice(0, 60) || "New chat", user_id: session!.user.id })
+          .insert(insertData)
           .select()
           .single();
         if (error || !newConv) { console.error(error); return; }
@@ -198,7 +227,20 @@ export default function HomePage() {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: history, isAgent }),
+        body: JSON.stringify({
+          messages: history,
+          isAgent,
+          personality: settings.personality,
+          instructions: settings.instructions,
+          language: settings.language,
+          voice: meta?.voice ?? "casual",
+          depth: meta?.depth ?? "balanced",
+          focus: meta?.focus ?? "default",
+          skill: meta?.skill ?? "none",
+          duality: meta?.duality ?? false,
+          echo: settings.language === "en", // Echo if no manual language set
+          userId: isGuest ? undefined : session?.user?.id,
+        }),
       });
 
       if (!res.ok || !res.body) {
@@ -311,6 +353,11 @@ export default function HomePage() {
     }
   }, [activeConversation]);
 
+  const filteredConversations = useMemo(() => {
+    if (!activeProjectId) return conversations;
+    return conversations.filter(c => c.projectId === activeProjectId);
+  }, [conversations, activeProjectId]);
+
   // ── Render ────────────────────────────────────────────────────────────────
   if (appState === "loading") {
     return (
@@ -332,10 +379,36 @@ export default function HomePage() {
     );
   }
 
+  const handleNewProject = async () => {
+    if (isGuest || !session) {
+      alert("Sign in to create a Vault.");
+      return;
+    }
+    const name = prompt("Name for new Vault:");
+    if (!name?.trim()) return;
+
+    const { data, error } = await supabase
+      .from("projects")
+      .insert({ user_id: session.user.id, name })
+      .select("id, name")
+      .single();
+
+    if (error) {
+      console.error(error);
+      alert("Failed to create vault.");
+      return;
+    }
+
+    if (data) {
+      setProjects(prev => [data, ...prev]);
+      setActiveProjectId(data.id);
+    }
+  };
+
   return (
     <div data-theme={theme} className="min-h-screen bg-[color:var(--vynthen-bg)] text-[color:var(--vynthen-fg)]">
       <Sidebar
-        conversations={conversations}
+        conversations={filteredConversations}
         activeId={activeId}
         onSelectConversation={(id) => { setActiveId(id); setIsTyping(false); }}
         onNewChat={handleNewChat}
@@ -347,6 +420,12 @@ export default function HomePage() {
         isGuest={isGuest}
         onSignOut={handleSignOut}
         userEmail={session?.user?.email}
+        onSettingsChange={setSettings}
+        onToggleLibrary={() => setIsLibraryOpen(true)}
+        projects={projects}
+        activeProjectId={activeProjectId}
+        onSelectProject={(id) => { setActiveProjectId(id); setActiveId(null); }}
+        onNewProject={handleNewProject}
       />
       <ChatArea
         messages={activeConversation?.messages ?? []}
@@ -359,6 +438,8 @@ export default function HomePage() {
         onSendVoiceQuery={handleVoiceQuery}
         userId={session?.user?.id ?? null}
         onConnectionsChanged={setConnectedIntegrations}
+        isLibraryOpen={isLibraryOpen}
+        onCloseLibrary={() => setIsLibraryOpen(false)}
       />
     </div>
   );

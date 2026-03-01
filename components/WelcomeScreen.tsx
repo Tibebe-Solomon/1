@@ -23,18 +23,18 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onSuggestionClick 
         </p>
       </div>
 
-      {/* Suggestion chips — Claude-style horizontal grid */}
+      {/* Suggestion chips */}
       <div className="grid grid-cols-2 gap-2.5 w-full max-w-sm">
         {SUGGESTIONS.map((s) => (
           <button
             key={s.label}
             type="button"
             onClick={() => onSuggestionClick(s.prompt)}
-            className="flex flex-col items-start gap-0.5 rounded-2xl border border-[color:var(--vynthen-border)] bg-[color:var(--vynthen-bg-secondary)] px-4 py-3 text-left transition-all hover:border-[color:var(--vynthen-fg-muted)] hover:bg-[color:var(--vynthen-bg)] cursor-pointer"
+            className="flex flex-col items-start gap-0.5 rounded-2xl border border-[color:var(--vynthen-border)] bg-[color:var(--vynthen-bg-secondary)] px-4 py-3 text-left transition-colors hover:border-[color:var(--vynthen-fg-muted)] hover:bg-[color:var(--vynthen-bg)] cursor-pointer"
           >
             <span className="text-[13.5px] font-medium text-[color:var(--vynthen-fg)]">{s.label}</span>
             <span className="text-[12px] text-[color:var(--vynthen-fg-muted)] line-clamp-2 leading-snug">
-              {s.prompt.slice(0, 52)}…
+              {s.prompt.slice(0, 60)}…
             </span>
           </button>
         ))}

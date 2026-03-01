@@ -82,6 +82,13 @@ export const LiveVoiceMode: React.FC<LiveVoiceModeProps> = ({ onClose, onSendVoi
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const recognitionRef = useRef<any>(null);
     const speechSynthesisRef = useRef<SpeechSynthesisUtterance | null>(null);
+    const silenceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+    // Keep the latest transcript accessible in setTimeout
+    const transcriptRef = useRef(transcript);
+    useEffect(() => {
+        transcriptRef.current = transcript;
+    }, [transcript]);
 
     useEffect(() => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -98,6 +105,18 @@ export const LiveVoiceMode: React.FC<LiveVoiceModeProps> = ({ onClose, onSendVoi
                     currentTranscript += event.results[i][0].transcript;
                 }
                 setTranscript(currentTranscript);
+
+                // Clear any existing silence timer
+                if (silenceTimerRef.current) {
+                    clearTimeout(silenceTimerRef.current);
+                }
+
+                // If we have a substantial phrase (e.g. > 3 chars to ignore random background noises like "ah"), set a 2-second silence timer to auto-send
+                if (currentTranscript.trim().length > 3) {
+                    silenceTimerRef.current = setTimeout(() => {
+                        handleAutoSend(currentTranscript);
+                    }, 2000);
+                }
             };
             recognition.onerror = (event: ErrorEvent) => {
                 if (event.error !== "no-speech") setStatus("idle");
@@ -109,6 +128,7 @@ export const LiveVoiceMode: React.FC<LiveVoiceModeProps> = ({ onClose, onSendVoi
         handleStartListening();
         return () => {
             window.speechSynthesis.cancel();
+            if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
             recognitionRef.current?.stop();
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -116,6 +136,7 @@ export const LiveVoiceMode: React.FC<LiveVoiceModeProps> = ({ onClose, onSendVoi
 
     const handleStartListening = () => {
         window.speechSynthesis.cancel();
+        if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
         setTranscript("");
         setAiResponseText("");
         if (recognitionRef.current) {
@@ -124,13 +145,35 @@ export const LiveVoiceMode: React.FC<LiveVoiceModeProps> = ({ onClose, onSendVoi
         }
     };
 
-    const handleStopListening = async () => {
-        if (status !== "listening") return;
+    const handleAutoSend = async (finalTranscript: string) => {
+        if (!finalTranscript.trim()) return;
         recognitionRef.current?.stop();
         setStatus("thinking");
-        if (!transcript.trim()) { setStatus("idle"); return; }
         try {
-            const aiResponse = await onSendVoiceQuery(transcript);
+            const aiResponse = await onSendVoiceQuery(finalTranscript);
+            if (aiResponse) {
+                setAiResponseText(aiResponse);
+                setStatus("speaking");
+                speak(aiResponse);
+            } else {
+                setStatus("idle");
+            }
+        } catch {
+            setStatus("idle");
+        }
+    };
+
+    const handleStopListening = async () => {
+        if (status !== "listening") return;
+        if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+        recognitionRef.current?.stop();
+
+        const currentTranscript = transcriptRef.current;
+        setStatus("thinking");
+        if (!currentTranscript.trim()) { setStatus("idle"); return; }
+
+        try {
+            const aiResponse = await onSendVoiceQuery(currentTranscript);
             setAiResponseText(aiResponse);
             setStatus("speaking");
             speak(aiResponse);

@@ -11,7 +11,27 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: "Vynthen AI",
-  description: "Vynthen AI – minimalistic AI chat experience"
+  description: "Vynthen AI – minimalistic, fast, intelligent AI assistant.",
+  icons: {
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/icon-192x192.png", type: "image/png", sizes: "192x192" },
+    ],
+    apple: "/icon-192x192.png",
+  },
+  openGraph: {
+    title: "Vynthen AI",
+    description: "Fast, intelligent AI — your personal assistant.",
+    siteName: "Vynthen AI",
+    images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "Vynthen AI" }],
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Vynthen AI",
+    description: "Fast, intelligent AI — your personal assistant.",
+    images: ["/og-image.png"],
+  },
 };
 
 export default function RootLayout({
@@ -22,28 +42,8 @@ export default function RootLayout({
   return (
     <html lang="en" className="no-tap-highlight">
       <head>
-        <script
-          type="module"
-          dangerouslySetInnerHTML={{
-            __html: `
-              import { initializeApp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";
-              import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-analytics.js";
-
-              const firebaseConfig = {
-                apiKey: "AIzaSyBwCrc9wSo2xFWlNnXNiaYJtsKxNsm7D2c",
-                authDomain: "vynthen-4fdd3.firebaseapp.com",
-                projectId: "vynthen-4fdd3",
-                storageBucket: "vynthen-4fdd3.firebasestorage.app",
-                messagingSenderId: "643798998548",
-                appId: "1:643798998548:web:38db67b0e4684ad8889101",
-                measurementId: "G-QM5B892CNB"
-              };
-
-              const app = initializeApp(firebaseConfig);
-              const analytics = getAnalytics(app);
-            `
-          }}
-        />
+        <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+        <link rel="alternate icon" href="/icon-192x192.png" />
       </head>
       <body className={`${inter.variable} font-sans antialiased`}>
         <VynthenProvider>{children}</VynthenProvider>
@@ -51,4 +51,3 @@ export default function RootLayout({
     </html>
   );
 }
-
