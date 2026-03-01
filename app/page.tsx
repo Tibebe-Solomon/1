@@ -23,6 +23,7 @@ import {
   serverTimestamp,
   QuerySnapshot,
   DocumentData,
+  QueryDocumentSnapshot,
 } from "firebase/firestore";
 import { loadSettings } from "../components/SettingsModal";
 import type { VynthenSettings } from "../components/SettingsModal";
@@ -150,7 +151,7 @@ export default function HomePage() {
       const convSnap = await Promise.race([
         getDocs(query(collection(db, "conversations"), where("userId", "==", userId), orderBy("createdAt", "desc"))),
         timeout
-      ]) as any;
+      ]) as QuerySnapshot<DocumentData>;
 
       // 3. Fetch all messages for this user's conversations
       const msgSnap = await Promise.race([
@@ -162,7 +163,7 @@ export default function HomePage() {
         id: string; conversationId: string; sender: "user" | "vynthen"; content: string; createdAt: { toDate: () => Date } | null;
       }>;
 
-      const loaded: Conversation[] = convSnap.docs.map((d) => {
+      const loaded: Conversation[] = convSnap.docs.map((d: QueryDocumentSnapshot<DocumentData>) => {
         const data = d.data();
         return {
           id: d.id,
@@ -483,6 +484,7 @@ export default function HomePage() {
           userEmail={user.email ?? ""}
           onComplete={() => {
             console.log("[Onboarding] Completed, loading app...");
+            pendingOnboarding.current = false;
             setAppState("loading");
             loadConversations(user.uid).then(() => setAppState("app"));
           }}

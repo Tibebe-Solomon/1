@@ -68,8 +68,8 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ userId, user
 
                 {/* Header */}
                 <div className="mb-8 text-center">
-                    <div className="w-16 h-16 rounded-2xl bg-bw-rainbow flex items-center justify-center mx-auto mb-4 shadow-xl">
-                        <span className="text-2xl font-bold text-white">V</span>
+                    <div className="w-16 h-16 rounded-2xl bg-[color:var(--vynthen-fg)] flex items-center justify-center mx-auto mb-4 shadow-xl">
+                        <span className="text-2xl font-bold text-[color:var(--vynthen-bg)]">V</span>
                     </div>
                     <h1 className="text-2xl font-bold text-[color:var(--vynthen-fg)]">Welcome to Vynthen</h1>
                     <p className="text-[14px] text-[color:var(--vynthen-fg-muted)] mt-2">Let's set up your profile to personalize your experience.</p>
@@ -188,7 +188,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ userId, user
                                 <button
                                     onClick={handleSubmit}
                                     disabled={!formData.referral || loading}
-                                    className="flex-[2] py-4 rounded-xl bg-bw-rainbow text-white font-bold text-[15px] hover:opacity-90 transition-opacity disabled:opacity-50 shadow-lg relative overflow-hidden"
+                                    className="flex-[2] py-4 rounded-xl bg-[color:var(--vynthen-fg)] text-[color:var(--vynthen-bg)] font-bold text-[15px] hover:opacity-90 transition-opacity disabled:opacity-50 shadow-lg relative overflow-hidden"
                                 >
                                     {loading ? (
                                         <div className="flex items-center justify-center gap-2">

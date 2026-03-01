@@ -85,7 +85,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
         onSettingsChange={onSettingsChange}
-        userId={isGuest ? null : userId}
+        userId={isGuest ? null : (userId ?? null)}
         onConnectionsChanged={onConnectionsChanged}
       />
 
@@ -293,7 +293,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 title="Settings"
                 className="flex flex-1 items-center gap-2.5 overflow-hidden rounded-xl p-2 text-left hover:bg-[color:var(--vynthen-bg)] transition-colors"
               >
-                <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-white ${isGuest ? "bg-[color:var(--vynthen-border)]" : "bg-bw-rainbow"}`}>
+                <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-[color:var(--vynthen-bg)] ${isGuest ? "bg-[color:var(--vynthen-border)]" : "bg-[color:var(--vynthen-fg)]"}`}>
                   {isGuest ? "G" : (userEmail?.[0]?.toUpperCase() ?? "U")}
                 </div>
                 <div className="flex-1 overflow-hidden">

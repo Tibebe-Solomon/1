@@ -121,7 +121,7 @@ export const Lens: React.FC<LensProps> = ({ isOpen, onClose, code, language }) =
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-[color:var(--vynthen-border)] bg-[color:var(--vynthen-bg-secondary)]">
                 <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded flex items-center justify-center bg-bw-rainbow text-white">
+                    <div className="w-6 h-6 rounded flex items-center justify-center bg-[color:var(--vynthen-fg)] text-[color:var(--vynthen-bg)]">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5"><path fillRule="evenodd" d="M14.615 1.595a.75.75 0 01.359.852L12.982 9.75h7.268a.75.75 0 01.548 1.262l-10.5 11.25a.75.75 0 01-1.272-.71l1.992-7.302H3.75a.75.75 0 01-.548-1.262l10.5-11.25a.75.75 0 01.913-.143z" clipRule="evenodd" /></svg>
                     </div>
                     <span className="text-[14px] font-semibold text-[color:var(--vynthen-fg)]">Lens Workspace</span>

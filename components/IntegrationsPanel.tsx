@@ -155,8 +155,8 @@ export const IntegrationsPanel: React.FC<Props> = ({ isOpen, onClose, userId, on
             {!isEmbedded && (
                 <div className="flex items-center justify-between px-5 py-4 border-b border-[color:var(--vynthen-border)]">
                     <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-xl bg-bw-rainbow flex items-center justify-center shadow-md">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-white">
+                        <div className="w-8 h-8 rounded-xl bg-[color:var(--vynthen-fg)] flex items-center justify-center shadow-md">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-[color:var(--vynthen-bg)]">
                                 <path fillRule="evenodd" d="M12 6.75a5.25 5.25 0 016.775-5.025.75.75 0 01.313 1.248l-3.32 3.319c.063.475.276.934.641 1.299.365.365.824.578 1.3.641l3.318-3.319a.75.75 0 011.248.313 5.25 5.25 0 01-5.472 6.756c-1.018-.086-1.87.1-2.309.634L7.344 21.3A3.298 3.298 0 112.7 16.657l8.684-7.151c.533-.44.72-1.291.634-2.309A5.342 5.342 0 0112 6.75z" clipRule="evenodd" />
                             </svg>
                         </div>
@@ -186,7 +186,7 @@ export const IntegrationsPanel: React.FC<Props> = ({ isOpen, onClose, userId, on
                         <div
                             key={integration.id}
                             className={`rounded-2xl border p-4 transition-all duration-200 ${isConnected
-                                ? "border-bw-rainbow bg-[color:var(--vynthen-bg)] shadow-[0_0_15px_rgba(200,200,200,0.05)]"
+                                ? "border-[color:var(--vynthen-fg)] bg-[color:var(--vynthen-bg)] shadow-[0_0_15px_rgba(200,200,200,0.05)]"
                                 : "border-[color:var(--vynthen-border)] bg-[color:var(--vynthen-bg-secondary)]"
                                 }`}
                         >
@@ -200,7 +200,7 @@ export const IntegrationsPanel: React.FC<Props> = ({ isOpen, onClose, userId, on
                                             <span className="font-semibold text-[14px] text-[color:var(--vynthen-fg)]">{integration.name}</span>
                                             {isConnected && (
                                                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium border border-[color:var(--vynthen-border)] bg-[color:var(--vynthen-bg-secondary)] text-[color:var(--vynthen-fg)]">
-                                                    <span className="w-1.5 h-1.5 rounded-full bg-bw-rainbow animate-pulse" />
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-[color:var(--vynthen-fg)] animate-pulse" />
                                                     Connected
                                                 </span>
                                             )}
@@ -227,7 +227,7 @@ export const IntegrationsPanel: React.FC<Props> = ({ isOpen, onClose, userId, on
                                     <button
                                         onClick={() => handleConnect(integration)}
                                         disabled={isLoading}
-                                        className="flex-1 text-xs font-semibold py-1.5 px-3 rounded-xl bg-bw-rainbow text-white hover:opacity-90 transition-opacity shadow-sm disabled:opacity-50"
+                                        className="flex-1 text-xs font-semibold py-1.5 px-3 rounded-xl bg-[color:var(--vynthen-fg)] text-[color:var(--vynthen-bg)] hover:opacity-90 transition-opacity shadow-sm disabled:opacity-50"
                                     >
                                         {isLoading ? "Connecting…" : `Connect ${integration.name}`}
                                     </button>
@@ -284,7 +284,7 @@ export const IntegrationsPanel: React.FC<Props> = ({ isOpen, onClose, userId, on
                                 onClick={() => {
                                     setConfirmModal((c) => ({ ...c, show: false }));
                                 }}
-                                className="flex-1 py-2 rounded-xl text-sm font-semibold bg-bw-rainbow text-white hover:opacity-90 transition-opacity"
+                                className="flex-1 py-2 rounded-xl text-sm font-semibold bg-[color:var(--vynthen-fg)] text-[color:var(--vynthen-bg)] hover:opacity-90 transition-opacity"
                             >
                                 Confirm
                             </button>
