@@ -93,12 +93,23 @@ function buildSystemPrompt(body: ChatRequestBody, userMemories: string[] = []): 
     ? ` CUSTOM INSTRUCTIONS (obey always): "${instructions.trim()}"`
     : "";
 
-  const languageNote = language && language !== "en"
-    ? ` CRITICAL: Translate ALL responses to language code "${language}". Every word must be in that language.`
-    : "";
+  // Single, absolute language directive — always applied, covers English too
+  const LANG_NAMES: Record<string, string> = {
+    en: "English", zh: "Mandarin Chinese", es: "Spanish", hi: "Hindi",
+    ar: "Arabic", fr: "French", pt: "Portuguese", ru: "Russian",
+    bn: "Bengali", ja: "Japanese", am: "Amharic", om: "Oromo",
+    sw: "Swahili", ha: "Hausa", yo: "Yoruba", de: "German",
+    tr: "Turkish", ko: "Korean", it: "Italian", fa: "Persian (Farsi)",
+    pa: "Punjabi", ur: "Urdu", vi: "Vietnamese", th: "Thai",
+    tl: "Tagalog (Filipino)", ms: "Malay / Indonesian", nl: "Dutch",
+    el: "Greek", so: "Somali", ti: "Tigrinya",
+  };
+  const langName = LANG_NAMES[language ?? "en"] ?? "English";
+  const languageNote = ` ABSOLUTE LANGUAGE RULE: You MUST respond ENTIRELY in ${langName} (${language ?? "en"}). Every single word of your response — including sparks questions, thinking blocks, labels, and headers — must be in ${langName}. Do NOT mix in any other language under any circumstances.`;
 
+  // Echo note is a separate opt-in feature unrelated to language setting
   const echoNote = echo
-    ? " ECHO MODE: Detect what language the user is writing in and always respond in that exact same language."
+    ? " ECHO MODE: Detect the user's input language and mirror it exactly. (Overrides the language rule above only if Echo is explicitly enabled.)"
     : "";
 
   const pulseNote = pulse

@@ -143,6 +143,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onSend, o
   const isUser = message.sender === "user";
   const [reshaping, setReshaping] = useState(false);
   const [reshaped, setReshaped] = useState<string | null>(null);
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [saveFolder, setSaveFolder] = useState("Uncategorized");
 
   if (isUser) {
     return (
@@ -222,19 +224,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onSend, o
             )}
             <button
               type="button"
-              onClick={() => {
-                const folder = prompt("Library Folder Name (e.g. Code, Ideas, Misc):", "Uncategorized");
-                if (folder) {
-                  try {
-                    const existing = JSON.parse(localStorage.getItem("vynthen-library") || "[]");
-                    existing.push({ id: message.id + Date.now(), folder, content: displayContent, savedAt: Date.now() });
-                    localStorage.setItem("vynthen-library", JSON.stringify(existing));
-                    alert("Saved to Library!");
-                  } catch (e) {
-                    console.error("Failed to save to library", e);
-                  }
-                }
-              }}
+              onClick={() => setShowSaveModal(true)}
               className="ml-auto px-3 py-1 rounded-full text-[11px] font-medium text-[color:var(--vynthen-fg-muted)] hover:text-[color:var(--vynthen-fg)] hover:bg-[color:var(--vynthen-bg-secondary)] border border-[color:var(--vynthen-border)] transition-colors flex items-center gap-1.5"
             >
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z" /></svg>
@@ -262,6 +252,43 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onSend, o
           </div>
         )}
       </div>
+
+      {showSaveModal && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-sm bg-[color:var(--vynthen-bg)] border border-[color:var(--vynthen-border)] rounded-2xl shadow-xl p-5 animate-in zoom-in-95 duration-200">
+            <h3 className="text-[15px] font-semibold text-[color:var(--vynthen-fg)] mb-1">Save to Library</h3>
+            <p className="text-[13px] text-[color:var(--vynthen-fg-muted)] mb-4">Choose a folder name (e.g., Code, Ideas, Misc)</p>
+            <input
+              type="text"
+              value={saveFolder}
+              onChange={(e) => setSaveFolder(e.target.value)}
+              placeholder="Folder name"
+              className="w-full bg-[color:var(--vynthen-bg-secondary)] border border-[color:var(--vynthen-border)] rounded-xl px-3 py-2.5 text-[13px] text-[color:var(--vynthen-fg)] focus:outline-none focus:border-[color:var(--vynthen-fg-muted)] mb-5"
+            />
+            <div className="flex items-center justify-end gap-2">
+              <button type="button" onClick={() => setShowSaveModal(false)} className="px-4 py-2 rounded-xl text-[13px] font-medium text-[color:var(--vynthen-fg-muted)] hover:text-[color:var(--vynthen-fg)] hover:bg-[color:var(--vynthen-bg-secondary)] transition-colors">Cancel</button>
+              <button
+                type="button"
+                onClick={() => {
+                  const folder = saveFolder.trim() || "Uncategorized";
+                  try {
+                    const existing = JSON.parse(localStorage.getItem("vynthen-library") || "[]");
+                    existing.push({ id: message.id + Date.now(), folder, content: displayContent, savedAt: Date.now() });
+                    localStorage.setItem("vynthen-library", JSON.stringify(existing));
+                    setShowSaveModal(false);
+                  } catch (e) {
+                    console.error("Failed to save to library", e);
+                  }
+                }}
+                className="px-4 py-2 rounded-xl text-[13px] font-medium bg-[color:var(--vynthen-fg)] text-[color:var(--vynthen-bg)] hover:opacity-90 transition-opacity"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };

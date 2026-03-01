@@ -11,10 +11,11 @@ export interface VynthenSettings {
     voice: string;
     depth: string;
     focus: string;
+    duality: boolean;
 }
 
 const LANGUAGES = [
-    { code: "en", label: "English", flag: "🇺🇸" },
+    { code: "en", label: "English", flag: "🇬🇧" },
     { code: "zh", label: "Mandarin Chinese", flag: "🇨🇳" },
     { code: "es", label: "Spanish", flag: "🇪🇸" },
     { code: "hi", label: "Hindi", flag: "🇮🇳" },
@@ -24,9 +25,26 @@ const LANGUAGES = [
     { code: "ru", label: "Russian", flag: "🇷🇺" },
     { code: "bn", label: "Bengali", flag: "🇧🇩" },
     { code: "ja", label: "Japanese", flag: "🇯🇵" },
+    { code: "am", label: "Amharic", flag: "🇪🇹" },
+    { code: "om", label: "Oromo", flag: "🇪🇹" },
+    { code: "sw", label: "Swahili", flag: "🌍" },
+    { code: "ha", label: "Hausa", flag: "🌍" },
+    { code: "yo", label: "Yoruba", flag: "🌍" },
     { code: "de", label: "German", flag: "🇩🇪" },
+    { code: "tr", label: "Turkish", flag: "🇹🇷" },
     { code: "ko", label: "Korean", flag: "🇰🇷" },
     { code: "it", label: "Italian", flag: "🇮🇹" },
+    { code: "fa", label: "Persian (Farsi)", flag: "🇮🇷" },
+    { code: "pa", label: "Punjabi", flag: "🇮🇳" },
+    { code: "ur", label: "Urdu", flag: "🇵🇰" },
+    { code: "vi", label: "Vietnamese", flag: "🇻🇳" },
+    { code: "th", label: "Thai", flag: "🇹🇭" },
+    { code: "tl", label: "Tagalog (Filipino)", flag: "🇵🇭" },
+    { code: "ms", label: "Malay / Indonesian", flag: "🇲🇾" },
+    { code: "nl", label: "Dutch", flag: "🇳🇱" },
+    { code: "el", label: "Greek", flag: "🇬🇷" },
+    { code: "so", label: "Somali", flag: "🇸🇴" },
+    { code: "ti", label: "Tigrinya", flag: "🇪🇹" },
 ];
 
 const PERSONALITIES = [
@@ -68,6 +86,7 @@ const defaultSettings: VynthenSettings = {
     voice: "casual",
     depth: "balanced",
     focus: "default",
+    duality: false,
 };
 
 export function loadSettings(): VynthenSettings {
@@ -256,6 +275,21 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
                                                 {v.label}
                                             </button>
                                         ))}
+                                    </div>
+                                </div>
+
+                                <div className="h-px bg-[color:var(--vynthen-border)] w-full" />
+
+                                <div>
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <h3 className="text-[15px] font-semibold text-[color:var(--vynthen-fg)] mb-1">Duality Mode</h3>
+                                            <p className="text-[13px] text-[color:var(--vynthen-fg-muted)]">Generate two answers side-by-side: Polished + Raw.</p>
+                                        </div>
+                                        <button type="button" onClick={() => update({ duality: !settings.duality })}
+                                            className={`relative w-11 h-6 rounded-full transition-colors ${settings.duality ? "bg-[color:var(--vynthen-fg)]" : "bg-[color:var(--vynthen-bg-secondary)] border border-[color:var(--vynthen-border)]"}`}>
+                                            <span className={`absolute top-[3px] w-4 h-4 rounded-full shadow transition-transform ${settings.duality ? "translate-x-6 bg-[color:var(--vynthen-bg)]" : "translate-x-1 bg-[color:var(--vynthen-fg-muted)]"}`} />
+                                        </button>
                                     </div>
                                 </div>
                             </div>

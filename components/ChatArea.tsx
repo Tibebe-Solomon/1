@@ -22,6 +22,7 @@ interface ChatAreaProps {
   onConnectionsChanged?: (connectedIds: string[]) => void;
   isLibraryOpen: boolean;
   onCloseLibrary: () => void;
+  isSurfing?: boolean;
 }
 
 export const ChatArea: React.FC<ChatAreaProps> = ({
@@ -37,6 +38,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
   onConnectionsChanged,
   isLibraryOpen,
   onCloseLibrary,
+  isSurfing = false,
 }) => {
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const [isLiveMode, setIsLiveMode] = useState(false);
@@ -45,7 +47,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [messages.length, isTyping]);
+  }, [messages.length, isTyping, isSurfing]);
 
   const handleOpenLens = (code: string, language: string) => {
     setLensState({ isOpen: true, code, language });
@@ -111,7 +113,28 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
               {messages.map((message) => (
                 <MessageBubble key={message.id} message={message} onSend={(t) => onSend(t)} onOpenLens={handleOpenLens} />
               ))}
-              {isTyping && (
+              {isSurfing && (
+                <div className="flex items-start gap-3.5 mb-4 animate-in fade-in duration-300">
+                  <div className="flex h-6 w-6 shrink-0 items-center justify-center mt-0.5">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4 text-blue-400 animate-spin" style={{ animationDuration: '2s' }}>
+                      <circle cx="12" cy="12" r="10" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z" />
+                    </svg>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[13px] font-medium text-blue-400 flex items-center gap-1.5">
+                      Surfing the web
+                      <span className="flex gap-0.5">
+                        <span className="w-1 h-1 bg-blue-400 rounded-full animate-bounce" />
+                        <span className="w-1 h-1 bg-blue-400 rounded-full animate-bounce [animation-delay:0.15s]" />
+                        <span className="w-1 h-1 bg-blue-400 rounded-full animate-bounce [animation-delay:0.3s]" />
+                      </span>
+                    </span>
+                    <span className="text-[11px] text-[color:var(--vynthen-fg-muted)]">Searching the web for real-time information…</span>
+                  </div>
+                </div>
+              )}
+              {isTyping && !isSurfing && (
                 <div className="flex items-center gap-2 mt-2 mb-2">
                   <span className="text-[13px] text-[color:var(--vynthen-fg-muted)] flex items-center gap-1.5">
                     Vynthen is thinking

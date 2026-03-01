@@ -20,6 +20,7 @@ export default function HomePage() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [isTyping, setIsTyping] = useState(false);
+  const [isSurfing, setIsSurfing] = useState(false);
   const [appState, setAppState] = useState<AppState>("loading");
   const [session, setSession] = useState<Session | null>(null);
   const [connectedIntegrations, setConnectedIntegrations] = useState<string[]>([]);
@@ -218,27 +219,58 @@ export default function HomePage() {
     );
     setIsTyping(true);
 
+    // ── Web Surf: search Tavily before asking the AI ──────────────────────────
+    let webSearchContext = "";
+    if (meta?.webSearch) {
+      setIsSurfing(true);
+      try {
+        const searchRes = await fetch("/api/search", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query: text }),
+        });
+        if (searchRes.ok) {
+          const searchData = await searchRes.json();
+          const sourceLines = (searchData.sources ?? []).map(
+            (s: { title: string; url: string; snippet: string }, i: number) =>
+              `[${i + 1}] ${s.title}\nURL: ${s.url}\nSnippet: ${s.snippet}`
+          ).join("\n\n");
+          webSearchContext = `\n\nWEB SEARCH RESULTS (from Tavily, use these to inform your answer):\n${searchData.answer ? `Summary: ${searchData.answer}\n\n` : ""}${sourceLines}\nIMPORTANT: Base your answer on these results. Cite sources with [1], [2], etc. at relevant points.`;
+        }
+      } catch (e) {
+        console.error("Web search failed:", e);
+      } finally {
+        setIsSurfing(false);
+      }
+    }
+
     const history = messagesWithUser.map((m) => ({
       role: m.sender === "user" ? ("user" as const) : ("assistant" as const),
       content: m.content,
     }));
 
     try {
+      const chatMessages = webSearchContext
+        ? history.map((m, i) => i === history.length - 1 && m.role === "user"
+          ? { ...m, content: m.content + webSearchContext }
+          : m)
+        : history;
+
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          messages: history,
+          messages: chatMessages,
           isAgent,
           personality: settings.personality,
           instructions: settings.instructions,
           language: settings.language,
-          voice: meta?.voice ?? "casual",
-          depth: meta?.depth ?? "balanced",
-          focus: meta?.focus ?? "default",
+          voice: settings.voice ?? "casual",
+          depth: settings.depth ?? "balanced",
+          focus: settings.focus ?? "default",
           skill: meta?.skill ?? "none",
-          duality: meta?.duality ?? false,
-          echo: settings.language === "en", // Echo if no manual language set
+          duality: settings.duality ?? false,
+          echo: false, // Echo is a separate opt-in feature, never auto-activate
           userId: isGuest ? undefined : session?.user?.id,
         }),
       });
@@ -440,6 +472,7 @@ export default function HomePage() {
         onConnectionsChanged={setConnectedIntegrations}
         isLibraryOpen={isLibraryOpen}
         onCloseLibrary={() => setIsLibraryOpen(false)}
+        isSurfing={isSurfing}
       />
     </div>
   );
