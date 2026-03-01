@@ -5,7 +5,7 @@ import { runGitHubAction } from "@/lib/integrations/github";
 import { getToken } from "@/lib/integrations/tokenStore";
 import { getIntegrationById } from "@/lib/integrations/registry";
 
-export const runtime = "edge";
+export const runtime = "nodejs";
 
 const HIGH_RISK_ACTIONS = new Set(["pushFile"]);
 const MEDIUM_RISK_ACTIONS = new Set(["createIssue", "createGist"]);

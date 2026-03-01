@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { supabase } from "../lib/supabase";
+// import { supabase } from "../lib/supabase"; // Removed legacy Supabase
 
 interface FalMediaRendererProps {
     src: string; // e.g. "fal-image:A futuristic city"
@@ -62,13 +62,6 @@ export const FalMediaRenderer: React.FC<FalMediaRendererProps> = ({ src, alt, me
                                     setFinalUrl(data.url);
                                     // Cache locally
                                     localStorage.setItem(`fal-${messageId}-${prompt}`, data.url);
-
-                                    // Update Supabase silently
-                                    const { data: dbData } = await supabase.from("messages").select("content").eq("id", messageId).single();
-                                    if (dbData) {
-                                        const newContent = dbData.content.replace(src, data.url);
-                                        await supabase.from("messages").update({ content: newContent }).eq("id", messageId);
-                                    }
                                     return;
                                 }
 

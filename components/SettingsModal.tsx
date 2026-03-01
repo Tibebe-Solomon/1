@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { LogoMark } from "./LogoMark";
-import { supabase } from "../lib/supabase";
+// import { supabase } from "../lib/supabase"; // Removed legacy Supabase
 
 export interface VynthenSettings {
     personality: string;
@@ -102,7 +102,7 @@ function saveSettings(s: VynthenSettings) {
     try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); } catch { /* ignore */ }
 }
 
-type Tab = "general" | "personality" | "instructions" | "language" | "memory";
+type Tab = "general" | "personality" | "instructions" | "language";
 
 interface SettingsModalProps {
     isOpen: boolean;
@@ -119,29 +119,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
     const backdropRef = useRef<HTMLDivElement>(null);
 
     const loadUserMemories = async () => {
-        setLoadingMemories(true);
-        try {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) {
-                setMemories([]);
-                return;
-            }
-            const { data, error } = await supabase
-                .from("memories")
-                .select("*")
-                .order("created_at", { ascending: false });
-
-            if (!error && data) {
-                setMemories(data);
-            }
-        } finally {
-            setLoadingMemories(false);
-        }
+        // TODO: Implement with Firebase if needed
+        setMemories([]);
     };
 
     const deleteMemory = async (id: string) => {
         setMemories(prev => prev.filter(m => m.id !== id));
-        await supabase.from("memories").delete().eq("id", id);
     };
 
     useEffect(() => {
@@ -187,11 +170,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-1.605.42-3.113 1.157-4.418" /></svg>
             )
         },
-        {
-            id: "memory", label: "Memory", icon: (
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 4.5v3.75m0 0v3.75m0-3.75h3.75m-3.75 0H12m-9 6h18m-9 0v-9m0 9v9" /></svg>
-            )
-        },
+        // {
+        //     id: "memory", label: "Memory", icon: (
+        //         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 4.5v3.75m0 0v3.75m0-3.75h3.75m-3.75 0H12m-9 6h18m-9 0v-9m0 9v9" /></svg>
+        //     )
+        // },
     ];
 
     return (
@@ -403,47 +386,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
                             </div>
                         )}
 
-                        {/* ── Memory ── */}
-                        {tab === "memory" && (
-                            <div className="flex flex-col h-full max-w-xl">
-                                <h3 className="text-[15px] font-semibold text-[color:var(--vynthen-fg)] mb-1">Recall Memory</h3>
-                                <p className="text-[13px] text-[color:var(--vynthen-fg-muted)] mb-4 leading-relaxed">
-                                    Vynthen automatically learns and remembers facts across your conversations. You can manage or delete what it knows here. <br />
-                                    <span className="opacity-70 italic">(Note: Memories are only saved if you are logged in, not as a Guest).</span>
-                                </p>
-
-                                {loadingMemories ? (
-                                    <div className="flex items-center gap-2 mt-4 text-[color:var(--vynthen-fg-muted)]">
-                                        <span className="w-1.5 h-1.5 bg-[color:var(--vynthen-fg-muted)] rounded-full animate-bounce" />
-                                        <span className="w-1.5 h-1.5 bg-[color:var(--vynthen-fg-muted)] rounded-full animate-bounce [animation-delay:0.15s]" />
-                                        <span className="w-1.5 h-1.5 bg-[color:var(--vynthen-fg-muted)] rounded-full animate-bounce [animation-delay:0.3s]" />
-                                    </div>
-                                ) : memories.length === 0 ? (
-                                    <div className="mt-8 flex flex-col items-center justify-center p-8 border border-dashed border-[color:var(--vynthen-border)] rounded-2xl bg-[color:var(--vynthen-bg-secondary)]/50">
-                                        <div className="w-12 h-12 bg-[color:var(--vynthen-bg)] border border-[color:var(--vynthen-border)] rounded-full flex items-center justify-center mb-3">
-                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-[color:var(--vynthen-fg-muted)]"><path strokeLinecap="round" strokeLinejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.383a14.406 14.406 0 01-3 0M14.25 18v-.192c0-.983.658-1.82 1.508-2.316a7.5 7.5 0 10-7.517 0c.85.496 1.509 1.333 1.509 2.316V18" /></svg>
-                                        </div>
-                                        <p className="text-[14px] font-medium text-[color:var(--vynthen-fg)]">No memories yet</p>
-                                        <p className="text-[13px] text-[color:var(--vynthen-fg-muted)] text-center max-w-[250px] mt-1">Chat with Vynthen and tell it things to remember.</p>
-                                    </div>
-                                ) : (
-                                    <div className="flex-1 overflow-y-auto space-y-2.5 custom-scrollbar pr-2 mt-2">
-                                        {memories.map(m => (
-                                            <div key={m.id} className="group flex items-start justify-between gap-4 p-4 rounded-xl border border-[color:var(--vynthen-border)] bg-[color:var(--vynthen-bg-secondary)] hover:border-[color:var(--vynthen-fg-muted)] transition-colors">
-                                                <p className="text-[14px] text-[color:var(--vynthen-fg)] leading-relaxed">{m.content}</p>
-                                                <button
-                                                    onClick={() => deleteMemory(m.id)}
-                                                    className="btn-icon shrink-0 p-1.5 text-[color:var(--vynthen-fg-muted)] opacity-0 group-hover:opacity-100 hover:text-red-500 hover:bg-[color:var(--vynthen-bg)] rounded-lg transition-all"
-                                                    title="Delete memory"
-                                                >
-                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
-                                                </button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        )}
+                        {/* ── Memory (Disabled) ── */}
+                        {/* tab === "memory" && (...) */}
 
                     </div>
                 </div>
