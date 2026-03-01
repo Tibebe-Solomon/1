@@ -6,8 +6,20 @@ import { ChatArea } from "../components/ChatArea";
 import { AuthScreen } from "../components/AuthScreen";
 import type { Conversation, Message } from "../components/types";
 import { useVynthen } from "../context/VynthenContext";
-import { supabase } from "../lib/supabase";
-import type { Session } from "@supabase/supabase-js";
+import { auth, db } from "../lib/firebase";
+import { onAuthStateChanged, signOut, type User } from "firebase/auth";
+import {
+  collection,
+  addDoc,
+  getDocs,
+  updateDoc,
+  deleteDoc,
+  doc,
+  query,
+  where,
+  orderBy,
+  serverTimestamp,
+} from "firebase/firestore";
 import { loadSettings } from "../components/SettingsModal";
 import type { VynthenSettings } from "../components/SettingsModal";
 import type { InputMeta } from "../components/InputBox";
@@ -22,18 +34,16 @@ export default function HomePage() {
   const [isTyping, setIsTyping] = useState(false);
   const [isSurfing, setIsSurfing] = useState(false);
   const [appState, setAppState] = useState<AppState>("loading");
-  const [session, setSession] = useState<Session | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [connectedIntegrations, setConnectedIntegrations] = useState<string[]>([]);
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
   const [settings, setSettings] = useState<VynthenSettings>({ personality: "balanced", instructions: "", language: "en", voice: "casual", depth: "balanced", focus: "default", duality: false });
 
-  // Vault state
   const [projects, setProjects] = useState<{ id: string; name: string }[]>([]);
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
 
-  const isGuest = session === null && appState === "app";
+  const isGuest = user === null && appState === "app";
 
-  // Load settings on mount
   useEffect(() => { setSettings(loadSettings()); }, []);
 
   const conversationsRef = useRef(conversations);
@@ -54,65 +64,59 @@ export default function HomePage() {
 
   // ── Auth state listener ────────────────────────────────────────────────────
   useEffect(() => {
-    // Check existing session on mount
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) {
-        setSession(data.session);
-        loadConversations(data.session.user.id);
+    const unsub = onAuthStateChanged(auth, (firebaseUser) => {
+      if (firebaseUser) {
+        setUser(firebaseUser);
+        loadConversations(firebaseUser.uid);
       } else {
-        setAppState("auth");
-      }
-    });
-
-    // Subscribe to future auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, sess) => {
-      setSession(sess);
-      if (!sess) {
+        setUser(null);
         setConversations([]);
         setActiveId(null);
         setAppState("auth");
       }
     });
-    return () => subscription.unsubscribe();
+    return () => unsub();
   }, []);
 
-  // ── Load conversations from Supabase (authenticated user only) ─────────────
+  // ── Load conversations from Firestore ──────────────────────────────────────
   const loadConversations = async (userId: string) => {
-    // 1. Fetch Projects (Vault)
-    const { data: projData } = await supabase
-      .from("projects")
-      .select("id, name")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false });
-
-    setProjects(projData ?? []);
+    // 1. Fetch Projects
+    const projSnap = await getDocs(
+      query(collection(db, "projects"), where("userId", "==", userId), orderBy("createdAt", "desc"))
+    );
+    const projData = projSnap.docs.map((d) => ({ id: d.id, name: d.data().name as string }));
+    setProjects(projData);
 
     // 2. Fetch Conversations
-    const { data: convData } = await supabase
-      .from("conversations")
-      .select("id, title, project_id, created_at")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false });
+    const convSnap = await getDocs(
+      query(collection(db, "conversations"), where("userId", "==", userId), orderBy("createdAt", "desc"))
+    );
 
-    const { data: msgData } = await supabase
-      .from("messages")
-      .select("id, conversation_id, sender, content, created_at")
-      .order("created_at", { ascending: true });
+    // 3. Fetch all messages for this user's conversations
+    const msgSnap = await getDocs(
+      query(collection(db, "messages"), where("userId", "==", userId), orderBy("createdAt", "asc"))
+    );
 
-    const messages = msgData ?? [];
-    const loaded: Conversation[] = (convData ?? []).map((c) => ({
-      id: c.id,
-      title: c.title,
-      projectId: c.project_id ?? undefined,
-      messages: messages
-        .filter((m) => m.conversation_id === c.id)
-        .map((m) => ({
-          id: m.id,
-          sender: m.sender as "user" | "vynthen",
-          content: m.content,
-          createdAt: new Date(m.created_at),
-        })),
-    }));
+    const messages = msgSnap.docs.map((d) => ({ id: d.id, ...d.data() })) as Array<{
+      id: string; conversationId: string; sender: "user" | "vynthen"; content: string; createdAt: { toDate: () => Date } | null;
+    }>;
+
+    const loaded: Conversation[] = convSnap.docs.map((d) => {
+      const data = d.data();
+      return {
+        id: d.id,
+        title: data.title as string,
+        projectId: data.projectId ?? undefined,
+        messages: messages
+          .filter((m) => m.conversationId === d.id)
+          .map((m) => ({
+            id: m.id,
+            sender: m.sender,
+            content: m.content,
+            createdAt: m.createdAt?.toDate() ?? new Date(),
+          })),
+      };
+    });
 
     setConversations(loaded);
     if (loaded.length > 0) setActiveId(loaded[0].id);
@@ -120,25 +124,18 @@ export default function HomePage() {
   };
 
   const handleAuthSuccess = () => {
-    // onAuthStateChange will fire and loadConversations will be called
-    // we just ensure the UI is ready to show the app
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) {
-        setSession(data.session);
-        loadConversations(data.session.user.id);
-      }
-    });
+    // onAuthStateChanged fires automatically — nothing extra needed
   };
 
   const handleGuestMode = () => {
-    setSession(null);
+    setUser(null);
     setConversations([]);
     setActiveId(null);
     setAppState("app");
   };
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
+    await signOut(auth);
     setConversations([]);
     setActiveId(null);
     setAppState("auth");
@@ -149,32 +146,25 @@ export default function HomePage() {
     [conversations, activeId]
   );
 
-  // ── Core send: DB-backed (logged in) OR in-memory (guest) ─────────────────
+  // ── Core send ──────────────────────────────────────────────────────────────
   const handleSend = async (text: string, isAgent?: boolean, meta?: InputMeta) => {
     let convId = activeId;
     let baseMessages: Message[] = activeConversation?.messages ?? [];
 
     if (!convId) {
       if (!isGuest) {
-        // Authenticated: persisted conversation
-        const insertData: any = { title: text.slice(0, 60) || "New chat", user_id: session!.user.id };
-        if (activeProjectId) {
-          insertData.project_id = activeProjectId;
-        }
-
-        const { data: newConv, error } = await supabase
-          .from("conversations")
-          .insert(insertData)
-          .select()
-          .single();
-        if (error || !newConv) { console.error(error); return; }
-
-        const local: Conversation = { id: newConv.id, title: newConv.title, messages: [] };
+        const insertData: Record<string, unknown> = {
+          title: text.slice(0, 60) || "New chat",
+          userId: user!.uid,
+          createdAt: serverTimestamp(),
+        };
+        if (activeProjectId) insertData.projectId = activeProjectId;
+        const newConvRef = await addDoc(collection(db, "conversations"), insertData);
+        const local: Conversation = { id: newConvRef.id, title: text.slice(0, 60) || "New chat", messages: [] };
         setConversations((prev) => [local, ...prev]);
-        setActiveId(newConv.id);
-        convId = newConv.id;
+        setActiveId(newConvRef.id);
+        convId = newConvRef.id;
       } else {
-        // Guest: in-memory only
         const id = `guest-${Date.now()}`;
         const local: Conversation = { id, title: text.slice(0, 60) || "New chat", messages: [] };
         setConversations((prev) => [local, ...prev]);
@@ -187,12 +177,14 @@ export default function HomePage() {
     let userMsg: Message;
 
     if (!isGuest && !convId!.startsWith("guest-")) {
-      const { data: userMsgDb, error } = await supabase
-        .from("messages")
-        .insert({ conversation_id: convId, sender: "user", content: text })
-        .select().single();
-      if (error || !userMsgDb) { console.error(error); return; }
-      userMsg = { id: userMsgDb.id, sender: "user", content: text, createdAt: new Date(userMsgDb.created_at) };
+      const userMsgRef = await addDoc(collection(db, "messages"), {
+        conversationId: convId,
+        userId: user!.uid,
+        sender: "user",
+        content: text,
+        createdAt: serverTimestamp(),
+      });
+      userMsg = { id: userMsgRef.id, sender: "user", content: text, createdAt: new Date() };
     } else {
       userMsg = { id: `${Date.now()}-u`, sender: "user", content: text, createdAt: new Date() };
     }
@@ -201,12 +193,14 @@ export default function HomePage() {
     let replyId = `${Date.now()}-a`;
 
     if (!isGuest && !convId!.startsWith("guest-")) {
-      const { data: aiMsgDb, error } = await supabase
-        .from("messages")
-        .insert({ conversation_id: convId, sender: "vynthen", content: "" })
-        .select().single();
-      if (error || !aiMsgDb) { console.error(error); return; }
-      replyId = aiMsgDb.id;
+      const aiMsgRef = await addDoc(collection(db, "messages"), {
+        conversationId: convId,
+        userId: user!.uid,
+        sender: "vynthen",
+        content: "",
+        createdAt: serverTimestamp(),
+      });
+      replyId = aiMsgRef.id;
     }
 
     setConversations((prev) =>
@@ -219,7 +213,7 @@ export default function HomePage() {
     );
     setIsTyping(true);
 
-    // ── Web Surf: search Tavily before asking the AI ──────────────────────────
+    // ── Web Surf ──────────────────────────────────────────────────────────────
     let webSearchContext = "";
     if (meta?.webSearch) {
       setIsSurfing(true);
@@ -235,7 +229,7 @@ export default function HomePage() {
             (s: { title: string; url: string; snippet: string }, i: number) =>
               `[${i + 1}] ${s.title}\nURL: ${s.url}\nSnippet: ${s.snippet}`
           ).join("\n\n");
-          webSearchContext = `\n\nWEB SEARCH RESULTS (from Tavily, use these to inform your answer):\n${searchData.answer ? `Summary: ${searchData.answer}\n\n` : ""}${sourceLines}\nIMPORTANT: Base your answer on these results. Cite sources with [1], [2], etc. at relevant points.`;
+          webSearchContext = `\n\nWEB SEARCH RESULTS (from Tavily, use these to inform your answer):\n${searchData.answer ? `Summary: ${searchData.answer}\n\n` : ""}${sourceLines}\nIMPORTANT: Base your answer on these results. Cite sources with [1], [2], etc.`;
         }
       } catch (e) {
         console.error("Web search failed:", e);
@@ -270,15 +264,15 @@ export default function HomePage() {
           focus: settings.focus ?? "default",
           skill: meta?.skill ?? "none",
           duality: settings.duality ?? false,
-          echo: false, // Echo is a separate opt-in feature, never auto-activate
-          userId: isGuest ? undefined : session?.user?.id,
+          echo: false,
+          userId: isGuest ? undefined : user?.uid,
         }),
       });
 
       if (!res.ok || !res.body) {
         const errContent = `Error: ${await res.text().catch(() => "Unknown")}`;
         if (!isGuest && !convId!.startsWith("guest-")) {
-          await supabase.from("messages").update({ content: errContent }).eq("id", replyId);
+          await updateDoc(doc(db, "messages", replyId), { content: errContent });
         }
         setConversations((prev) =>
           prev.map((c) => c.id !== convId ? c : {
@@ -305,11 +299,10 @@ export default function HomePage() {
         );
       }
 
-      // Persist final AI response (only for logged-in users)
       if (!isGuest && !convId!.startsWith("guest-")) {
-        await supabase.from("messages").update({ content: accumulated }).eq("id", replyId);
+        await updateDoc(doc(db, "messages", replyId), { content: accumulated });
         if (baseMessages.length === 0) {
-          await supabase.from("conversations").update({ title: text.slice(0, 60) }).eq("id", convId);
+          await updateDoc(doc(db, "conversations", convId!), { title: text.slice(0, 60) });
         }
       }
 
@@ -329,24 +322,24 @@ export default function HomePage() {
 
   const handleNewChat = useCallback(async () => {
     if (!isGuest) {
-      const { data: newConv, error } = await supabase
-        .from("conversations")
-        .insert({ title: "New chat", user_id: session!.user.id })
-        .select().single();
-      if (error || !newConv) return;
-      setConversations((prev) => [{ id: newConv.id, title: "New chat", messages: [] }, ...prev]);
-      setActiveId(newConv.id);
+      const newConvRef = await addDoc(collection(db, "conversations"), {
+        title: "New chat",
+        userId: user!.uid,
+        createdAt: serverTimestamp(),
+      });
+      setConversations((prev) => [{ id: newConvRef.id, title: "New chat", messages: [] }, ...prev]);
+      setActiveId(newConvRef.id);
     } else {
       const id = `guest-${Date.now()}`;
       setConversations((prev) => [{ id, title: "New chat", messages: [] }, ...prev]);
       setActiveId(id);
     }
     setIsTyping(false);
-  }, [isGuest, session]);
+  }, [isGuest, user]);
 
   const handleDeleteConversation = useCallback(async (id: string) => {
     if (!isGuest && !id.startsWith("guest-")) {
-      await supabase.from("conversations").delete().eq("id", id);
+      await deleteDoc(doc(db, "conversations", id));
     }
     setConversations((prev) => prev.filter((c) => c.id !== id));
     if (activeId === id) {
@@ -356,7 +349,6 @@ export default function HomePage() {
   }, [activeId, isGuest]);
 
   const handleVoiceQuery = useCallback(async (text: string): Promise<string> => {
-    // Simplified: just call the API, don't persist for voice (guest or auth — conversation already handled by handleSend)
     const history = (activeConversation?.messages ?? []).map((m) => ({
       role: m.sender === "user" ? ("user" as const) : ("assistant" as const),
       content: m.content,
@@ -412,29 +404,21 @@ export default function HomePage() {
   }
 
   const handleNewProject = async () => {
-    if (isGuest || !session) {
+    if (isGuest || !user) {
       alert("Sign in to create a Vault.");
       return;
     }
     const name = prompt("Name for new Vault:");
     if (!name?.trim()) return;
 
-    const { data, error } = await supabase
-      .from("projects")
-      .insert({ user_id: session.user.id, name })
-      .select("id, name")
-      .single();
+    const projRef = await addDoc(collection(db, "projects"), {
+      userId: user.uid,
+      name,
+      createdAt: serverTimestamp(),
+    });
 
-    if (error) {
-      console.error(error);
-      alert("Failed to create vault.");
-      return;
-    }
-
-    if (data) {
-      setProjects(prev => [data, ...prev]);
-      setActiveProjectId(data.id);
-    }
+    setProjects(prev => [{ id: projRef.id, name }, ...prev]);
+    setActiveProjectId(projRef.id);
   };
 
   return (
@@ -451,7 +435,7 @@ export default function HomePage() {
         onToggleTheme={() => setTheme(theme === "dark" ? "light" : "dark")}
         isGuest={isGuest}
         onSignOut={handleSignOut}
-        userEmail={session?.user?.email}
+        userEmail={user?.email ?? undefined}
         onSettingsChange={setSettings}
         onToggleLibrary={() => setIsLibraryOpen(true)}
         projects={projects}
@@ -468,7 +452,7 @@ export default function HomePage() {
         sidebarCollapsed={sidebarCollapsed}
         onToggleSidebar={() => setSidebarCollapsed((v) => !v)}
         onSendVoiceQuery={handleVoiceQuery}
-        userId={session?.user?.id ?? null}
+        userId={user?.uid ?? null}
         onConnectionsChanged={setConnectedIntegrations}
         isLibraryOpen={isLibraryOpen}
         onCloseLibrary={() => setIsLibraryOpen(false)}

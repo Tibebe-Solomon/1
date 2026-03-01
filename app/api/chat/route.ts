@@ -1,5 +1,5 @@
 import Groq from "groq-sdk";
-import { createClient } from "@supabase/supabase-js";
+import { adminDb } from "@/lib/firebaseAdmin";
 
 interface ChatMessage {
   role: "system" | "user" | "assistant";
@@ -253,19 +253,15 @@ export async function POST(req: Request): Promise<Response> {
       });
     }
 
-    // Initialize admin Supabase client for backend operations
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    // Load user memories from Firebase Admin Firestore
     let userMemories: string[] = [];
-    let supabase: ReturnType<typeof createClient> | null = null;
 
-    if (supabaseUrl && supabaseServiceKey && body.userId) {
-      supabase = createClient(supabaseUrl, supabaseServiceKey);
-      // Cast the result to any[] to bypass generic type complaining about 'content'
-      const { data } = await supabase.from("memories").select("content").eq("user_id", body.userId);
-      if (data) {
-        userMemories = (data as any[]).map(m => m.content as string);
-      }
+    if (body.userId) {
+      const memSnap = await adminDb
+        .collection("memories")
+        .where("userId", "==", body.userId)
+        .get();
+      userMemories = memSnap.docs.map((d) => d.data().content as string);
     }
 
     const systemPrompt = buildSystemPrompt(body, userMemories);
@@ -278,7 +274,7 @@ export async function POST(req: Request): Promise<Response> {
     const temperature = depthTemp[body.depth ?? "balanced"] ?? 0.4;
 
     const chatCompletion = await groq.chat.completions.create({
-      model: "llama-3.3-70b-versatile",
+      model: "moonshotai/kimi-k2-instruct",
       messages: messages as any[],
       stream: true,
       temperature,
@@ -298,16 +294,16 @@ export async function POST(req: Request): Promise<Response> {
           }
 
           // Post-process: check if AI decided to remember something
-          if (supabase && body.userId) {
+          if (body.userId) {
             const memoryRegex = /\[\[remember:\s*(.+?)\]\]/g;
             let match;
             while ((match = memoryRegex.exec(fullResponse)) !== null) {
               const fact = match[1].trim();
               if (fact) {
-                // Ignore TS error for the dynamic table name in generic client
-                await (supabase.from("memories") as any).insert({
-                  user_id: body.userId,
-                  content: fact
+                await adminDb.collection("memories").add({
+                  userId: body.userId,
+                  content: fact,
+                  createdAt: new Date().toISOString(),
                 });
               }
             }

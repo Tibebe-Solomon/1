@@ -2,7 +2,13 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { supabase } from "../lib/supabase";
+import {
+    signInWithEmailAndPassword,
+    createUserWithEmailAndPassword,
+    signInWithPopup,
+    GoogleAuthProvider,
+} from "firebase/auth";
+import { auth } from "../lib/firebase";
 import { LogoMark } from "./LogoMark";
 
 interface AuthScreenProps {
@@ -28,23 +34,15 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess, onGuestMo
 
         try {
             if (mode === "signup") {
-                const { data, error } = await supabase.auth.signUp({ email, password });
-                if (error) throw error;
-                if (data.session) {
-                    // If confirm email is disabled, they are instantly logged in
-                    onAuthSuccess();
-                } else {
-                    setSuccess("Check your email to confirm your account, then log in.");
-                    setMode("login");
-                }
+                await createUserWithEmailAndPassword(auth, email, password);
+                onAuthSuccess();
             } else {
-                const { error } = await supabase.auth.signInWithPassword({ email, password });
-                if (error) throw error;
+                await signInWithEmailAndPassword(auth, email, password);
                 onAuthSuccess();
             }
         } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : "An unexpected error occurred.";
-            setError(msg);
+            setError(msg.replace("Firebase: ", "").replace(/\(auth\/.*\)\.?/, "").trim());
         } finally {
             setLoading(false);
         }
@@ -53,16 +51,12 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess, onGuestMo
     const handleGoogleAuth = async () => {
         try {
             setError(null);
-            const { error } = await supabase.auth.signInWithOAuth({
-                provider: 'google',
-                options: {
-                    redirectTo: window.location.origin,
-                },
-            });
-            if (error) throw error;
+            const provider = new GoogleAuthProvider();
+            await signInWithPopup(auth, provider);
+            onAuthSuccess();
         } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : "Google sign-in failed.";
-            setError(msg);
+            setError(msg.replace("Firebase: ", "").replace(/\(auth\/.*\)\.?/, "").trim());
         }
     };
 
@@ -198,7 +192,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess, onGuestMo
                 >
                     Continue as Guest
                     <span className="block text-xs text-[color:var(--vynthen-fg-muted)] mt-0.5 font-normal">
-                        Chats won't be saved
+                        Chats won&apos;t be saved
                     </span>
                 </button>
 
@@ -219,8 +213,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess, onGuestMo
                     </Link>.
                 </p>
             </div>
-
-
         </div>
     );
 };
