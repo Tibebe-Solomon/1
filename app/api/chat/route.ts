@@ -227,7 +227,7 @@ RULE 4: If everything is perfectly clear, execute flawlessly with extreme format
 
   const sparksNote = ` After every response, add a hidden block at the very end:\n\`\`\`sparks\n[Question 1?]\n[Question 2?]\n[Question 3?]\n[Question 4?]\n\`\`\`\nThese are 4 short, clickable follow-up questions the user might want to ask next. Make them genuinely useful and relevant.`;
 
-  const imageGenNote = " For image requests: `![Description](fal-image:detailed prompt)`. For video: `![Description](fal-video:detailed prompt)`.";
+  const imageGenNote = " For image generation requests use exactly: `![Description](gemini-image:detailed prompt here)`. No video generation is available.";
 
   return BASE_SYSTEM_PROMPT
     + integrationNote + webSearchNote + skillNote

@@ -3,7 +3,7 @@ import type { Message } from "./types";
 import ReactMarkdown from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
 import { LogoMark } from "./LogoMark";
-import { FalMediaRenderer } from "./FalMediaRenderer";
+import { GeminiImageRenderer } from "./GeminiImageRenderer";
 
 interface CodeBlockProps {
   language: string | undefined;
@@ -52,11 +52,11 @@ const extractText = (node: any): string => {
   return "";
 };
 
-const FAL_MEDIA_REGEX = /!\[([^\]]*)\]\((fal-(?:image|video):[^)]+)\)/g;
+const GEMINI_MEDIA_REGEX = /!\[([^\]]*)\]\((gemini-image:[^)]+)\)/g;
 const SPARKS_REGEX = /```sparks\n([\s\S]*?)```/;
 
 interface ContentSegment {
-  type: "text" | "fal-media";
+  type: "text" | "gemini-media";
   content: string;
   alt?: string;
   src?: string;
@@ -65,11 +65,11 @@ interface ContentSegment {
 function splitContentSegments(text: string): ContentSegment[] {
   const segments: ContentSegment[] = [];
   let lastIndex = 0;
-  const regex = new RegExp(FAL_MEDIA_REGEX.source, "g");
+  const regex = new RegExp(GEMINI_MEDIA_REGEX.source, "g");
   let match: RegExpExecArray | null;
   while ((match = regex.exec(text)) !== null) {
     if (match.index > lastIndex) segments.push({ type: "text", content: text.slice(lastIndex, match.index) });
-    segments.push({ type: "fal-media", content: match[0], alt: match[1], src: match[2].trim() });
+    segments.push({ type: "gemini-media", content: match[0], alt: match[1], src: match[2].trim() });
     lastIndex = match.index + match[0].length;
   }
   if (lastIndex < text.length) segments.push({ type: "text", content: text.slice(lastIndex) });
@@ -194,8 +194,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onSend, o
       <div className="w-full max-w-none flex-1">
         <div className="prose-custom text-[15px]">
           {segments.map((seg, i) => {
-            if (seg.type === "fal-media" && seg.src) {
-              return <FalMediaRenderer key={i} src={seg.src} alt={seg.alt} messageId={message.id} />;
+            if (seg.type === "gemini-media" && seg.src) {
+              return <GeminiImageRenderer key={i} src={seg.src} alt={seg.alt} messageId={message.id} />;
             }
             if (seg.content.trim()) return <MarkdownContent key={i} text={seg.content} message={message} onOpenLens={onOpenLens} />;
             return null;
