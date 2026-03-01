@@ -60,7 +60,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
 
   return (
     <main
-      className={`flex min-h-screen flex-col justify-center transition-all duration-300 bg-[color:var(--vynthen-bg)] ${sidebarCollapsed ? "sm:ml-[68px]" : "sm:ml-[260px]"}`}
+      className={`flex min-h-[100dvh] flex-col justify-center transition-all duration-300 bg-[color:var(--vynthen-bg)] ${sidebarCollapsed ? "sm:ml-[68px]" : "sm:ml-[260px]"}`}
     >
       {isLiveMode && onSendVoiceQuery && (
         <LiveVoiceMode

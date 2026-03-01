@@ -93,7 +93,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       )}
 
       <aside
-        className={`fixed left-0 top-0 z-30 flex h-screen flex-col border-r border-[color:var(--vynthen-border)] bg-[color:var(--vynthen-bg-secondary)] transition-all duration-300 ease-in-out ${collapsed ? "w-0 overflow-hidden sm:w-[64px]" : "w-[260px]"
+        className={`fixed left-0 top-0 z-30 flex h-[100dvh] flex-col border-r border-[color:var(--vynthen-border)] bg-[color:var(--vynthen-bg-secondary)] transition-all duration-300 ease-in-out ${collapsed ? "w-0 overflow-hidden sm:w-[64px]" : "w-[260px]"
           }`}
       >
         {/* ── TOP BAR ── */}
@@ -160,8 +160,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 type="button"
                 onClick={() => onSelectProject?.(null)}
                 className={`rounded-lg px-2.5 py-1 text-[12px] font-medium transition-colors whitespace-nowrap ${!activeProjectId
-                    ? "bg-[color:var(--vynthen-fg)] text-[color:var(--vynthen-bg)]"
-                    : "border border-[color:var(--vynthen-border)] text-[color:var(--vynthen-fg-muted)] hover:text-[color:var(--vynthen-fg)]"
+                  ? "bg-[color:var(--vynthen-fg)] text-[color:var(--vynthen-bg)]"
+                  : "border border-[color:var(--vynthen-border)] text-[color:var(--vynthen-fg-muted)] hover:text-[color:var(--vynthen-fg)]"
                   }`}
               >
                 All Chats
@@ -172,8 +172,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   type="button"
                   onClick={() => onSelectProject?.(p.id)}
                   className={`rounded-lg px-2.5 py-1 text-[12px] font-medium transition-colors whitespace-nowrap ${activeProjectId === p.id
-                      ? "bg-[color:var(--vynthen-fg)] text-[color:var(--vynthen-bg)]"
-                      : "border border-[color:var(--vynthen-border)] text-[color:var(--vynthen-fg-muted)] hover:text-[color:var(--vynthen-fg)]"
+                    ? "bg-[color:var(--vynthen-fg)] text-[color:var(--vynthen-bg)]"
+                    : "border border-[color:var(--vynthen-border)] text-[color:var(--vynthen-fg-muted)] hover:text-[color:var(--vynthen-fg)]"
                     }`}
                 >
                   {p.name}
@@ -200,8 +200,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     onClick={() => onSelectConversation(conv.id)}
                     title={conv.title}
                     className={`flex h-10 w-10 items-center justify-center rounded-xl transition-colors ${isActive
-                        ? "bg-[color:var(--vynthen-bg)] text-[color:var(--vynthen-fg)]"
-                        : "text-[color:var(--vynthen-fg-muted)] hover:bg-[color:var(--vynthen-bg)] hover:text-[color:var(--vynthen-fg)]"
+                      ? "bg-[color:var(--vynthen-bg)] text-[color:var(--vynthen-fg)]"
+                      : "text-[color:var(--vynthen-fg-muted)] hover:bg-[color:var(--vynthen-bg)] hover:text-[color:var(--vynthen-fg)]"
                       }`}
                   >
                     <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="2">
@@ -215,8 +215,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <div
                   key={conv.id}
                   className={`group flex w-full items-center gap-1 rounded-lg px-2 py-1.5 transition-colors ${isActive
-                      ? "bg-[color:var(--vynthen-bg)] text-[color:var(--vynthen-fg)]"
-                      : "text-[color:var(--vynthen-fg)] hover:bg-[color:var(--vynthen-bg)]/60"
+                    ? "bg-[color:var(--vynthen-bg)] text-[color:var(--vynthen-fg)]"
+                    : "text-[color:var(--vynthen-fg)] hover:bg-[color:var(--vynthen-bg)]/60"
                     }`}
                 >
                   <button

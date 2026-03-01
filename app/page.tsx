@@ -393,7 +393,7 @@ export default function HomePage() {
   // ── Render ────────────────────────────────────────────────────────────────
   if (appState === "loading") {
     return (
-      <div data-theme={theme} className="min-h-screen flex items-center justify-center bg-[color:var(--vynthen-bg)]">
+      <div data-theme={theme} className="min-h-[100dvh] flex items-center justify-center bg-[color:var(--vynthen-bg)]">
         <div className="flex gap-1.5">
           <span className="w-2 h-2 bg-[color:var(--vynthen-fg-muted)] rounded-full animate-bounce" />
           <span className="w-2 h-2 bg-[color:var(--vynthen-fg-muted)] rounded-full animate-bounce [animation-delay:0.15s]" />
@@ -438,7 +438,7 @@ export default function HomePage() {
   };
 
   return (
-    <div data-theme={theme} className="min-h-screen bg-[color:var(--vynthen-bg)] text-[color:var(--vynthen-fg)]">
+    <div data-theme={theme} className="min-h-[100dvh] bg-[color:var(--vynthen-bg)] text-[color:var(--vynthen-fg)]">
       <Sidebar
         conversations={filteredConversations}
         activeId={activeId}

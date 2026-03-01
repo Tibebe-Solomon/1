@@ -68,7 +68,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess, onGuestMo
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-[color:var(--vynthen-bg)] p-4">
+        <div className="min-h-[100dvh] flex items-center justify-center bg-[color:var(--vynthen-bg)] p-4">
             {/* Background subtle grid pattern */}
             <div
                 className="absolute inset-0 pointer-events-none opacity-[0.03]"
