@@ -67,19 +67,25 @@ export default function HomePage() {
   // ── Auth state listener ────────────────────────────────────────────────────
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
+      console.log("[Auth] State changed:", firebaseUser?.email || "No user");
       if (firebaseUser) {
         setUser(firebaseUser);
-        // Check for onboarding
+        setAppState("loading"); // Show loading while checking profile/conversations
+
         try {
           const profileSnap = await getDoc(doc(db, "profiles", firebaseUser.uid));
           if (!profileSnap.exists()) {
+            console.log("[Auth] Profile not found, redirecting to onboarding");
             setAppState("onboarding");
           } else {
-            loadConversations(firebaseUser.uid);
+            console.log("[Auth] Profile found, loading conversations");
+            await loadConversations(firebaseUser.uid);
+            setAppState("app");
           }
         } catch (err) {
-          console.error("Error checking profile:", err);
-          loadConversations(firebaseUser.uid); // Fallback to app even if profile check fails
+          console.error("[Auth Error] Profile check failed:", err);
+          await loadConversations(firebaseUser.uid);
+          setAppState("app");
         }
       } else {
         setUser(null);
@@ -136,9 +142,6 @@ export default function HomePage() {
       if (loaded.length > 0) setActiveId(loaded[0].id);
     } catch (err) {
       console.error("[Firestore Error] Failed to load data:", err);
-      // If this is an index error, the console will show a link to create it.
-    } finally {
-      setAppState("app");
     }
   };
 
@@ -401,14 +404,19 @@ export default function HomePage() {
     return conversations.filter(c => c.projectId === activeProjectId);
   }, [conversations, activeProjectId]);
 
-  // ── Render ────────────────────────────────────────────────────────────────
+  // ── Render States ─────────────────────────────────────────────────────────
   if (appState === "loading") {
     return (
       <div data-theme={theme} className="min-h-[100dvh] flex items-center justify-center bg-[color:var(--vynthen-bg)]">
-        <div className="flex gap-1.5">
-          <span className="w-2 h-2 bg-[color:var(--vynthen-fg-muted)] rounded-full animate-bounce" />
-          <span className="w-2 h-2 bg-[color:var(--vynthen-fg-muted)] rounded-full animate-bounce [animation-delay:0.15s]" />
-          <span className="w-2 h-2 bg-[color:var(--vynthen-fg-muted)] rounded-full animate-bounce [animation-delay:0.3s]" />
+        <div className="flex flex-col items-center gap-4">
+          <div className="flex gap-1.5">
+            <span className="w-2 h-2 bg-[color:var(--vynthen-fg-muted)] rounded-full animate-bounce" />
+            <span className="w-2 h-2 bg-[color:var(--vynthen-fg-muted)] rounded-full animate-bounce [animation-delay:0.15s]" />
+            <span className="w-2 h-2 bg-[color:var(--vynthen-fg-muted)] rounded-full animate-bounce [animation-delay:0.3s]" />
+          </div>
+          <p className="text-xs text-[color:var(--vynthen-fg-muted)] font-medium animate-pulse">
+            Getting things ready...
+          </p>
         </div>
       </div>
     );
@@ -422,13 +430,21 @@ export default function HomePage() {
     );
   }
 
-  if (appState === "onboarding" && user) {
+  if (appState === "onboarding") {
+    if (!user) {
+      setAppState("auth");
+      return null;
+    }
     return (
       <div data-theme={theme}>
         <OnboardingScreen
           userId={user.uid}
           userEmail={user.email ?? ""}
-          onComplete={() => loadConversations(user.uid)}
+          onComplete={() => {
+            console.log("[Onboarding] Completed, loading app...");
+            setAppState("loading");
+            loadConversations(user.uid).then(() => setAppState("app"));
+          }}
         />
       </div>
     );
