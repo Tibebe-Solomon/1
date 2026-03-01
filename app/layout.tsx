@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { VynthenProvider } from "../context/VynthenContext";
@@ -9,9 +9,18 @@ const inter = Inter({
   display: "swap"
 });
 
+export const viewport: Viewport = {
+  themeColor: "#000000",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+};
+
 export const metadata: Metadata = {
   title: "Vynthen AI",
   description: "Vynthen AI – minimalistic, fast, intelligent AI assistant.",
+  manifest: "/manifest.json",
   icons: {
     icon: [
       { url: "/favicon.svg", type: "image/svg+xml" },
