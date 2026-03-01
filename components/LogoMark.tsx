@@ -13,19 +13,7 @@ export const LogoMark: React.FC<LogoMarkProps> = ({ className, interactive = fal
       className={`${className} overflow-visible`}
       aria-hidden="true"
     >
-      {/* Box outline */}
-      <rect
-        x="1.5"
-        y="1.5"
-        width="29"
-        height="29"
-        rx="5"
-        ry="5"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-      />
-      {/* V letterform — bold, centred inside the box */}
+      {/* V letterform */}
       <path
         d="M 8 9 L 12.5 9 L 16 19 L 19.5 9 L 24 9 L 17.5 24 Q 16 27 14.5 24 Z"
         fill="currentColor"
