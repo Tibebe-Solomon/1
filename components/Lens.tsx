@@ -54,8 +54,16 @@ export const Lens: React.FC<LensProps> = ({ isOpen, onClose, code, language }) =
                     #output-container { display: flex; flex-direction: column; gap: 8px; }
                   </style>
                 </head>
+                </head>
                 <body>
+                  <div id="root"></div>
                   <div id="output-container"></div>
+                  
+                  <!-- React & Babel for compiling TS/JSX in the browser -->
+                  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+                  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+                  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
                   <script>
                     const container = document.getElementById('output-container');
                     const originalLog = console.log;
@@ -78,7 +86,9 @@ export const Lens: React.FC<LensProps> = ({ isOpen, onClose, code, language }) =
                         appendLog('error', ['Uncaught Error:', msg, 'at line', line]);
                         return false;
                     };
+                  </script>
 
+                  <script type="text/babel" data-presets="env,react,typescript">
                     try {
                         ${scriptContent}
                     } catch(e) {

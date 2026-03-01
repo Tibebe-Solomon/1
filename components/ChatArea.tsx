@@ -109,7 +109,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
 
           {/* Messages */}
           {!isEmpty && (
-            <div className={`flex-1 space-y-6 pb-6 pt-8 transition-all duration-300 ${lensState.isOpen ? 'sm:mr-[480px] lg:mr-[600px]' : ''}`}>
+            <div className="flex-1 space-y-6 pb-6 pt-8 transition-all duration-300">
               {messages.map((message) => (
                 <MessageBubble key={message.id} message={message} onSend={(t) => onSend(t)} onOpenLens={handleOpenLens} />
               ))}

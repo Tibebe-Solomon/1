@@ -126,9 +126,18 @@ function buildSystemPrompt(body: ChatRequestBody, userMemories: string[] = []): 
     : "";
 
   const agentNote = (mode === "agent" || isAgent)
-    ? `\n\nAGENT MODE ACTIVE: Format response in two parts:
-1. \`\`\`thinking\n[Step 1...]\n[Step 2...]\n[Finalizing...]\n\`\`\`
-2. Your final answer immediately after.`
+    ? `\n\nAGENT MODE ACTIVE: You are operating as a highly proactive, analytical, and structured agent.
+Do NOT just give a flat answer or immediately dump code without understanding the full scope.
+You MUST:
+1. First, think step-by-step in a hidden \`\`\`thinking\`\`\` block. Analyze constraints, goals, and missing info.
+2. If the user's request is ambiguous, broad, or lacks crucial details, ASK targeted clarifying questions at the end of your responseBEFORE committing to a final solution.
+3. Structure your response clearly using headers (##), bold text, and bullet points. Make it extremely readable.
+Format:
+\`\`\`thinking
+[Analyze request...]
+[Determine if questions are needed...]
+\`\`\`
+Your highly formatted, bulleted response here. End with questions if you need clarification.`
     : "";
 
   const memoryNote = userId

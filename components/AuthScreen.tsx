@@ -27,10 +27,15 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess, onGuestMo
 
         try {
             if (mode === "signup") {
-                const { error } = await supabase.auth.signUp({ email, password });
+                const { data, error } = await supabase.auth.signUp({ email, password });
                 if (error) throw error;
-                setSuccess("Check your email to confirm your account, then log in.");
-                setMode("login");
+                if (data.session) {
+                    // If confirm email is disabled, they are instantly logged in
+                    onAuthSuccess();
+                } else {
+                    setSuccess("Check your email to confirm your account, then log in.");
+                    setMode("login");
+                }
             } else {
                 const { error } = await supabase.auth.signInWithPassword({ email, password });
                 if (error) throw error;
