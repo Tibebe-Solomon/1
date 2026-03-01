@@ -35,9 +35,16 @@ interface Props {
     onClose: () => void;
     userId: string | null;
     onConnectionsChanged: (connectedIds: string[]) => void;
+    isEmbedded?: boolean;
 }
 
-export const IntegrationsPanel: React.FC<Props> = ({ isOpen, onClose, userId, onConnectionsChanged }) => {
+const riskColors: Record<string, string> = {
+    low: "text-emerald-400",
+    medium: "text-amber-400",
+    high: "text-red-400",
+};
+
+export const IntegrationsPanel: React.FC<Props> = ({ isOpen, onClose, userId, onConnectionsChanged, isEmbedded = false }) => {
     const [status, setStatus] = useState<IntegrationStatus>({ configured: {}, connected: {} });
     const [config, setConfig] = useState<{ google?: { clientId: string }; github?: { clientId: string } }>({});
     const [loading, setLoading] = useState<Record<string, boolean>>({});
@@ -143,13 +150,105 @@ export const IntegrationsPanel: React.FC<Props> = ({ isOpen, onClose, userId, on
         setLoading((prev) => ({ ...prev, [integrationId]: false }));
     };
 
-    if (!isOpen) return null;
+    const renderContent = () => (
+        <div className={`flex flex-col h-full ${isEmbedded ? "" : "w-full max-w-[420px] max-h-[85vh] bg-[color:var(--vynthen-bg)] border border-[color:var(--vynthen-border)] rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200"}`}>
+            {!isEmbedded && (
+                <div className="flex items-center justify-between px-5 py-4 border-b border-[color:var(--vynthen-border)]">
+                    <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-xl bg-bw-rainbow flex items-center justify-center shadow-md">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-white">
+                                <path fillRule="evenodd" d="M12 6.75a5.25 5.25 0 016.775-5.025.75.75 0 01.313 1.248l-3.32 3.319c.063.475.276.934.641 1.299.365.365.824.578 1.3.641l3.318-3.319a.75.75 0 011.248.313 5.25 5.25 0 01-5.472 6.756c-1.018-.086-1.87.1-2.309.634L7.344 21.3A3.298 3.298 0 112.7 16.657l8.684-7.151c.533-.44.72-1.291.634-2.309A5.342 5.342 0 0112 6.75z" clipRule="evenodd" />
+                            </svg>
+                        </div>
+                        <div>
+                            <h2 className="font-semibold text-[15px] text-[color:var(--vynthen-fg)]">Integrations</h2>
+                            <p className="text-xs text-[color:var(--vynthen-fg-muted)]">Connect your apps to Vynthen</p>
+                        </div>
+                    </div>
+                    <button onClick={onClose} className="btn-icon rounded-lg" aria-label="Close integrations panel">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+            )}
 
-    const riskColors: Record<string, string> = {
-        low: "text-emerald-400",
-        medium: "text-amber-400",
-        high: "text-red-400",
-    };
+            <div className={`p-4 flex flex-col gap-3 ${isEmbedded ? "" : "flex-1 overflow-y-auto"}`}>
+                {INTEGRATIONS.map((integration) => {
+                    const intConfig = (config as any)[integration.id];
+                    const isConfigured = status.configured[integration.id] ||
+                        !!intConfig?.configured ||
+                        !!intConfig?.clientId;
+                    const isConnected = status.connected[integration.id] ?? false;
+                    const isLoading = loading[integration.id] ?? false;
+
+                    return (
+                        <div
+                            key={integration.id}
+                            className={`rounded-2xl border p-4 transition-all duration-200 ${isConnected
+                                ? "border-bw-rainbow bg-[color:var(--vynthen-bg)] shadow-[0_0_15px_rgba(200,200,200,0.05)]"
+                                : "border-[color:var(--vynthen-border)] bg-[color:var(--vynthen-bg-secondary)]"
+                                }`}
+                        >
+                            <div className="flex items-start justify-between gap-3">
+                                <div className="flex items-center gap-3">
+                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg shadow-sm border ${isConnected ? "border-[color:var(--vynthen-border)] bg-[color:var(--vynthen-bg-secondary)]" : "border-[color:var(--vynthen-border)] bg-[color:var(--vynthen-bg)]"}`}>
+                                        {integration.icon}
+                                    </div>
+                                    <div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="font-semibold text-[14px] text-[color:var(--vynthen-fg)]">{integration.name}</span>
+                                            {isConnected && (
+                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium border border-[color:var(--vynthen-border)] bg-[color:var(--vynthen-bg-secondary)] text-[color:var(--vynthen-fg)]">
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-bw-rainbow animate-pulse" />
+                                                    Connected
+                                                </span>
+                                            )}
+                                        </div>
+                                        <p className="text-xs text-[color:var(--vynthen-fg-muted)] mt-0.5">{integration.description}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="mt-3 flex items-center gap-2">
+                                {!isConfigured ? (
+                                    <div className="text-xs text-[color:var(--vynthen-fg-muted)] bg-[color:var(--vynthen-bg)] border border-[color:var(--vynthen-border)] rounded-lg px-3 py-1.5 w-full text-center">
+                                        Not configured yet. Set env vars in your dashboard.
+                                    </div>
+                                ) : isConnected ? (
+                                    <button
+                                        onClick={() => handleDisconnect(integration.id)}
+                                        disabled={isLoading}
+                                        className="flex-1 text-xs font-medium py-1.5 px-3 rounded-xl border border-[color:var(--vynthen-border)] text-[color:var(--vynthen-fg)] hover:bg-[color:var(--vynthen-bg)] transition-colors disabled:opacity-50"
+                                    >
+                                        {isLoading ? "Disconnecting…" : "Disconnect"}
+                                    </button>
+                                ) : (
+                                    <button
+                                        onClick={() => handleConnect(integration)}
+                                        disabled={isLoading}
+                                        className="flex-1 text-xs font-semibold py-1.5 px-3 rounded-xl bg-bw-rainbow text-white hover:opacity-90 transition-opacity shadow-sm disabled:opacity-50"
+                                    >
+                                        {isLoading ? "Connecting…" : `Connect ${integration.name}`}
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+
+            {!isEmbedded && (
+                <div className="px-5 py-3 border-t border-[color:var(--vynthen-border)]">
+                    <p className="text-[11px] text-[color:var(--vynthen-fg-muted)] text-center">
+                        🔒 Tokens are stored securely server-side. Never in your browser.
+                    </p>
+                </div>
+            )}
+        </div>
+    );
+
+    if (isEmbedded) return renderContent();
 
     return (
         <>
@@ -158,134 +257,41 @@ export const IntegrationsPanel: React.FC<Props> = ({ isOpen, onClose, userId, on
 
             {/* Panel (Centered Modal) */}
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                <div className="w-full max-w-[420px] max-h-[85vh] flex flex-col bg-[color:var(--vynthen-bg)] border border-[color:var(--vynthen-border)] rounded-2xl shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+                {renderContent()}
+            </div>
 
-                    {/* Header */}
-                    <div className="flex items-center justify-between px-5 py-4 border-b border-[color:var(--vynthen-border)]">
-                        <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-xl bg-bw-rainbow flex items-center justify-center shadow-md">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-white">
-                                    <path fillRule="evenodd" d="M12 6.75a5.25 5.25 0 016.775-5.025.75.75 0 01.313 1.248l-3.32 3.319c.063.475.276.934.641 1.299.365.365.824.578 1.3.641l3.318-3.319a.75.75 0 011.248.313 5.25 5.25 0 01-5.472 6.756c-1.018-.086-1.87.1-2.309.634L7.344 21.3A3.298 3.298 0 112.7 16.657l8.684-7.151c.533-.44.72-1.291.634-2.309A5.342 5.342 0 0112 6.75zM4.117 19.125a.75.75 0 01.75-.75h.008a.75.75 0 01.75.75v.008a.75.75 0 01-.75.75h-.008a.75.75 0 01-.75-.75v-.008z" clipRule="evenodd" />
-                                </svg>
+            {/* Confirmation Modal */}
+            {confirmModal.show && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+                    <div className="bg-[color:var(--vynthen-bg)] border border-[color:var(--vynthen-border)] rounded-2xl shadow-2xl max-w-sm w-full p-6">
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg ${confirmModal.riskLevel === "high" ? "bg-red-500/15" : "bg-amber-500/15"}`}>
+                                ⚠️
                             </div>
                             <div>
-                                <h2 className="font-semibold text-[15px] text-[color:var(--vynthen-fg)]">Integrations</h2>
-                                <p className="text-xs text-[color:var(--vynthen-fg-muted)]">Connect your apps to Vynthen</p>
+                                <h3 className="font-semibold text-[color:var(--vynthen-fg)]">Confirm Action</h3>
+                                <span className={`text-xs font-medium ${riskColors[confirmModal.riskLevel] ?? "text-amber-400"}`}>
+                                    {confirmModal.riskLevel} risk
+                                </span>
                             </div>
                         </div>
-                        <button onClick={onClose} className="btn-icon rounded-lg" aria-label="Close integrations panel">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </button>
-                    </div>
-
-                    {/* Integration cards */}
-                    <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
-                        {INTEGRATIONS.map((integration) => {
-                            const isConfigured = status.configured[integration.id] ?? false;
-                            const isConnected = status.connected[integration.id] ?? false;
-                            const isLoading = loading[integration.id] ?? false;
-
-                            return (
-                                <div
-                                    key={integration.id}
-                                    className={`rounded-2xl border p-4 transition-all duration-200 ${isConnected
-                                        ? "border-bw-rainbow bg-[color:var(--vynthen-bg)] shadow-[0_0_15px_rgba(200,200,200,0.05)]"
-                                        : "border-[color:var(--vynthen-border)] bg-[color:var(--vynthen-bg-secondary)]"
-                                        }`}
-                                >
-                                    <div className="flex items-start justify-between gap-3">
-                                        <div className="flex items-center gap-3">
-                                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg shadow-sm border ${isConnected ? "border-[color:var(--vynthen-border)] bg-[color:var(--vynthen-bg-secondary)]" : "border-[color:var(--vynthen-border)] bg-[color:var(--vynthen-bg)]"}`}>
-                                                {integration.icon}
-                                            </div>
-                                            <div>
-                                                <div className="flex items-center gap-2">
-                                                    <span className="font-semibold text-[14px] text-[color:var(--vynthen-fg)]">{integration.name}</span>
-                                                    {isConnected && (
-                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium border border-[color:var(--vynthen-border)] bg-[color:var(--vynthen-bg-secondary)] text-[color:var(--vynthen-fg)]">
-                                                            <span className="w-1.5 h-1.5 rounded-full bg-bw-rainbow animate-pulse" />
-                                                            Connected
-                                                        </span>
-                                                    )}
-                                                </div>
-                                                <p className="text-xs text-[color:var(--vynthen-fg-muted)] mt-0.5">{integration.description}</p>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="mt-3 flex items-center gap-2">
-                                        {!isConfigured ? (
-                                            <div className="text-xs text-[color:var(--vynthen-fg-muted)] bg-[color:var(--vynthen-bg)] border border-[color:var(--vynthen-border)] rounded-lg px-3 py-1.5 w-full text-center">
-                                                Not configured yet. Set env vars in your dashboard.
-                                            </div>
-                                        ) : isConnected ? (
-                                            <button
-                                                onClick={() => handleDisconnect(integration.id)}
-                                                disabled={isLoading}
-                                                className="flex-1 text-xs font-medium py-1.5 px-3 rounded-xl border border-[color:var(--vynthen-border)] text-[color:var(--vynthen-fg)] hover:bg-[color:var(--vynthen-bg)] transition-colors disabled:opacity-50"
-                                            >
-                                                {isLoading ? "Disconnecting…" : "Disconnect"}
-                                            </button>
-                                        ) : (
-                                            <button
-                                                onClick={() => handleConnect(integration)}
-                                                disabled={isLoading}
-                                                className="flex-1 text-xs font-semibold py-1.5 px-3 rounded-xl bg-bw-rainbow text-white hover:opacity-90 transition-opacity shadow-sm disabled:opacity-50"
-                                            >
-                                                {isLoading ? "Connecting…" : `Connect ${integration.name}`}
-                                            </button>
-                                        )}
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-
-                    {/* Footer note */}
-                    <div className="px-5 py-3 border-t border-[color:var(--vynthen-border)]">
-                        <p className="text-[11px] text-[color:var(--vynthen-fg-muted)] text-center">
-                            🔒 Tokens are stored securely server-side. Never in your browser.
-                        </p>
+                        <p className="text-sm text-[color:var(--vynthen-fg-muted)] mb-5">{confirmModal.message}</p>
+                        <div className="flex gap-2">
+                            <button onClick={() => setConfirmModal((c) => ({ ...c, show: false }))} className="flex-1 py-2 rounded-xl text-sm border border-[color:var(--vynthen-border)] text-[color:var(--vynthen-fg-muted)] hover:text-[color:var(--vynthen-fg)] transition-colors">
+                                Cancel
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setConfirmModal((c) => ({ ...c, show: false }));
+                                }}
+                                className="flex-1 py-2 rounded-xl text-sm font-semibold bg-bw-rainbow text-white hover:opacity-90 transition-opacity"
+                            >
+                                Confirm
+                            </button>
+                        </div>
                     </div>
                 </div>
-
-                {/* Confirmation Modal */}
-                {confirmModal.show && (
-                    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-                        <div className="bg-[color:var(--vynthen-bg)] border border-[color:var(--vynthen-border)] rounded-2xl shadow-2xl max-w-sm w-full p-6">
-                            <div className="flex items-center gap-3 mb-4">
-                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg ${confirmModal.riskLevel === "high" ? "bg-red-500/15" : "bg-amber-500/15"}`}>
-                                    ⚠️
-                                </div>
-                                <div>
-                                    <h3 className="font-semibold text-[color:var(--vynthen-fg)]">Confirm Action</h3>
-                                    <span className={`text-xs font-medium ${riskColors[confirmModal.riskLevel] ?? "text-amber-400"}`}>
-                                        {confirmModal.riskLevel} risk
-                                    </span>
-                                </div>
-                            </div>
-                            <p className="text-sm text-[color:var(--vynthen-fg-muted)] mb-5">{confirmModal.message}</p>
-                            <div className="flex gap-2">
-                                <button onClick={() => setConfirmModal((c) => ({ ...c, show: false }))} className="flex-1 py-2 rounded-xl text-sm border border-[color:var(--vynthen-border)] text-[color:var(--vynthen-fg-muted)] hover:text-[color:var(--vynthen-fg)] transition-colors">
-                                    Cancel
-                                </button>
-                                <button
-                                    onClick={() => {
-                                        setConfirmModal((c) => ({ ...c, show: false }));
-                                        // Re-call action with confirmed=true — handled externally
-                                    }}
-                                    className="flex-1 py-2 rounded-xl text-sm font-semibold bg-bw-rainbow text-white hover:opacity-90 transition-opacity"
-                                >
-                                    Confirm
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
-                {/* Close outer modal wrapper */}
-            </div>
+            )}
         </>
     );
 };

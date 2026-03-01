@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { LogoMark } from "./LogoMark";
+import { IntegrationsPanel } from "./IntegrationsPanel";
 // import { supabase } from "../lib/supabase"; // Removed legacy Supabase
 
 export interface VynthenSettings {
@@ -102,15 +103,17 @@ function saveSettings(s: VynthenSettings) {
     try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); } catch { /* ignore */ }
 }
 
-type Tab = "general" | "personality" | "instructions" | "language";
+type Tab = "general" | "personality" | "instructions" | "language" | "integrations";
 
 interface SettingsModalProps {
     isOpen: boolean;
     onClose: () => void;
     onSettingsChange?: (s: VynthenSettings) => void;
+    userId: string | null;
+    onConnectionsChanged: (ids: string[]) => void;
 }
 
-export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSettingsChange }) => {
+export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSettingsChange, userId, onConnectionsChanged }) => {
     const [tab, setTab] = useState<Tab>("general");
     const [settings, setSettings] = useState<VynthenSettings>(defaultSettings);
     const [langSearch, setLangSearch] = useState("");
@@ -168,6 +171,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
         {
             id: "language", label: "Language", icon: (
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-1.605.42-3.113 1.157-4.418" /></svg>
+            )
+        },
+        {
+            id: "integrations", label: "Integrations", icon: (
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6.75a5.25 5.25 0 016.775-5.025.75.75 0 01.313 1.248l-3.32 3.319c.063.475.276.934.641 1.299.365.365.824.578 1.3.641l3.318-3.319a.75.75 0 011.248.313 5.25 5.25 0 01-5.472 6.756c-1.018-.086-1.87.1-2.309.634L7.344 21.3A3.298 3.298 0 112.7 16.657l8.684-7.151c.533-.44.72-1.291.634-2.309A5.342 5.342 0 0112 6.75z" /></svg>
             )
         },
         // {

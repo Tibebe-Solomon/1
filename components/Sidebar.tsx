@@ -24,6 +24,8 @@ interface SidebarProps {
   activeProjectId?: string | null;
   onSelectProject?: (id: string | null) => void;
   onNewProject?: () => void;
+  userId?: string | null;
+  onConnectionsChanged: (ids: string[]) => void;
 }
 
 // Reusable icon button with uniform 40×40 size
@@ -72,15 +74,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
   activeProjectId = null,
   onSelectProject,
   onNewProject,
+  userId,
+  onConnectionsChanged,
 }) => {
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   return (
     <>
       <SettingsModal
-        isOpen={settingsOpen}
-        onClose={() => setSettingsOpen(false)}
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
         onSettingsChange={onSettingsChange}
+        userId={isGuest ? null : userId}
+        onConnectionsChanged={onConnectionsChanged}
       />
 
       {/* Mobile overlay */}
@@ -254,7 +260,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               {/* Avatar → opens settings */}
               <button
                 type="button"
-                onClick={() => setSettingsOpen(true)}
+                onClick={() => setIsSettingsOpen(true)}
                 title="Settings"
                 className="flex h-10 w-10 items-center justify-center rounded-xl hover:bg-[color:var(--vynthen-bg)] transition-colors"
               >
@@ -283,7 +289,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               {/* Profile + settings */}
               <button
                 type="button"
-                onClick={() => setSettingsOpen(true)}
+                onClick={() => setIsSettingsOpen(true)}
                 title="Settings"
                 className="flex flex-1 items-center gap-2.5 overflow-hidden rounded-xl p-2 text-left hover:bg-[color:var(--vynthen-bg)] transition-colors"
               >

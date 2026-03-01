@@ -21,6 +21,8 @@ import {
   where,
   orderBy,
   serverTimestamp,
+  QuerySnapshot,
+  DocumentData,
 } from "firebase/firestore";
 import { loadSettings } from "../components/SettingsModal";
 import type { VynthenSettings } from "../components/SettingsModal";
@@ -38,6 +40,7 @@ export default function HomePage() {
   const [appState, setAppState] = useState<AppState>("loading");
   const [user, setUser] = useState<User | null>(null);
   const [connectedIntegrations, setConnectedIntegrations] = useState<string[]>([]);
+  const pendingOnboarding = useRef(false);
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
   const [settings, setSettings] = useState<VynthenSettings>({ personality: "balanced", instructions: "", language: "en", voice: "casual", depth: "balanced", focus: "default", duality: false });
 
@@ -64,27 +67,58 @@ export default function HomePage() {
     window.localStorage.setItem("vynthen-theme", theme);
   }, [theme]);
 
+  const handleAuthSuccess = (isNewUser?: boolean) => {
+    if (isNewUser) {
+      console.log("[Auth] New user detected, setting pending onboarding");
+      pendingOnboarding.current = true;
+      setAppState("onboarding");
+    }
+  };
+
   // ── Auth state listener ────────────────────────────────────────────────────
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
       console.log("[Auth] State changed:", firebaseUser?.email || "No user");
       if (firebaseUser) {
         setUser(firebaseUser);
-        setAppState("loading"); // Show loading while checking profile/conversations
+
+        const isBrandNew = firebaseUser.metadata.creationTime === firebaseUser.metadata.lastSignInTime;
+        const isRecentlyCreated = (Date.now() - new Date(firebaseUser.metadata.creationTime!).getTime()) < 60000;
+
+        if (pendingOnboarding.current || (isBrandNew && isRecentlyCreated)) {
+          console.log("[Auth] New/recent user detected, skipping profile check & forcing onboarding");
+          setAppState("onboarding");
+          return;
+        }
+
+        setAppState("loading");
+
+        // Timeout helper
+        const timeout = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("Timeout")), 4000)
+        );
 
         try {
-          const profileSnap = await getDoc(doc(db, "profiles", firebaseUser.uid));
+          console.log("[Auth] Checking profile for:", firebaseUser.uid);
+          // Race the profile check against a 4s timeout
+          const profileSnap = await Promise.race([
+            getDoc(doc(db, "profiles", firebaseUser.uid)),
+            timeout
+          ]) as any;
+
           if (!profileSnap.exists()) {
             console.log("[Auth] Profile not found, redirecting to onboarding");
             setAppState("onboarding");
           } else {
             console.log("[Auth] Profile found, loading conversations");
-            await loadConversations(firebaseUser.uid);
+            // Load conversations in background, don't block the UI transition!
+            loadConversations(firebaseUser.uid);
             setAppState("app");
           }
-        } catch (err) {
-          console.error("[Auth Error] Profile check failed:", err);
-          await loadConversations(firebaseUser.uid);
+        } catch (err: any) {
+          console.error("[Auth Error] Profile check failed or timed out:", err.message || err);
+          // If Firestore is offline or slow, don't hang! Fallback to app.
+          loadConversations(firebaseUser.uid);
           setAppState("app");
         }
       } else {
@@ -100,22 +134,29 @@ export default function HomePage() {
   // ── Load conversations from Firestore ──────────────────────────────────────
   const loadConversations = async (userId: string) => {
     try {
-      // 1. Fetch Projects
-      const projSnap = await getDocs(
-        query(collection(db, "projects"), where("userId", "==", userId), orderBy("createdAt", "desc"))
+      const timeout = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Query Timeout")), 5000)
       );
-      const projData = projSnap.docs.map((d) => ({ id: d.id, name: d.data().name as string }));
+
+      // 1. Fetch Projects
+      const projSnap = await Promise.race([
+        getDocs(query(collection(db, "projects"), where("userId", "==", userId), orderBy("createdAt", "desc"))),
+        timeout
+      ]) as QuerySnapshot<DocumentData>;
+      const projData = projSnap.docs.map((d: QueryDocumentSnapshot<DocumentData>) => ({ id: d.id, name: d.data().name as string }));
       setProjects(projData);
 
       // 2. Fetch Conversations
-      const convSnap = await getDocs(
-        query(collection(db, "conversations"), where("userId", "==", userId), orderBy("createdAt", "desc"))
-      );
+      const convSnap = await Promise.race([
+        getDocs(query(collection(db, "conversations"), where("userId", "==", userId), orderBy("createdAt", "desc"))),
+        timeout
+      ]) as any;
 
       // 3. Fetch all messages for this user's conversations
-      const msgSnap = await getDocs(
-        query(collection(db, "messages"), where("userId", "==", userId), orderBy("createdAt", "asc"))
-      );
+      const msgSnap = await Promise.race([
+        getDocs(query(collection(db, "messages"), where("userId", "==", userId), orderBy("createdAt", "asc"))),
+        timeout
+      ]) as QuerySnapshot<DocumentData>;
 
       const messages = msgSnap.docs.map((d) => ({ id: d.id, ...d.data() })) as Array<{
         id: string; conversationId: string; sender: "user" | "vynthen"; content: string; createdAt: { toDate: () => Date } | null;
@@ -145,9 +186,7 @@ export default function HomePage() {
     }
   };
 
-  const handleAuthSuccess = () => {
-    // onAuthStateChanged fires automatically — nothing extra needed
-  };
+
 
   const handleGuestMode = () => {
     setUser(null);
@@ -290,6 +329,8 @@ export default function HomePage() {
           userId: isGuest ? undefined : user?.uid,
         }),
       });
+
+
 
       if (!res.ok || !res.body) {
         const errContent = `Error: ${await res.text().catch(() => "Unknown")}`;
@@ -489,6 +530,8 @@ export default function HomePage() {
         activeProjectId={activeProjectId}
         onSelectProject={(id) => { setActiveProjectId(id); setActiveId(null); }}
         onNewProject={handleNewProject}
+        onConnectionsChanged={setConnectedIntegrations}
+        userId={user?.uid ?? null}
       />
       <ChatArea
         messages={activeConversation?.messages ?? []}

@@ -12,7 +12,7 @@ import { auth } from "../lib/firebase";
 import { LogoMark } from "./LogoMark";
 
 interface AuthScreenProps {
-    onAuthSuccess: () => void;
+    onAuthSuccess: (isNewUser?: boolean) => void;
     onGuestMode: () => void;
 }
 
@@ -35,11 +35,12 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess, onGuestMo
         try {
             if (mode === "signup") {
                 await createUserWithEmailAndPassword(auth, email, password);
-                onAuthSuccess();
+                console.log("[Auth] Successfully signed up with email:", email);
+                onAuthSuccess(true);
             } else {
                 await signInWithEmailAndPassword(auth, email, password);
-                console.log("[Auth] Successfully signed in/up with email:", email);
-                onAuthSuccess();
+                console.log("[Auth] Successfully signed in with email:", email);
+                onAuthSuccess(false);
             }
         } catch (err: any) {
             console.error("[Auth Error] Manual auth failed:", err);
