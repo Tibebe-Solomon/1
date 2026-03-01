@@ -394,6 +394,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
                             </div>
                         )}
 
+                        {/* ── Integrations ── */}
+                        {tab === "integrations" && (
+                            <div className="flex flex-col h-full">
+                                <IntegrationsPanel
+                                    isOpen={true}
+                                    onClose={onClose}
+                                    userId={userId}
+                                    onConnectionsChanged={onConnectionsChanged}
+                                    isEmbedded={true}
+                                />
+                            </div>
+                        )}
+
                         {/* ── Memory (Disabled) ── */}
                         {/* tab === "memory" && (...) */}
 

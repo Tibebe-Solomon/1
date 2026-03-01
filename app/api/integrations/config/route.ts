@@ -9,6 +9,9 @@ export async function GET() {
         },
         github: {
             clientId: process.env.GITHUB_CLIENT_ID || "",
+        },
+        notion: {
+            clientId: process.env.NOTION_OAUTH_CLIENT_ID || "",
         }
     });
 }

@@ -50,6 +50,8 @@ export const IntegrationsPanel: React.FC<Props> = ({ isOpen, onClose, userId, on
     const [loading, setLoading] = useState<Record<string, boolean>>({});
     const [confirmModal, setConfirmModal] = useState<ConfirmModal>({ show: false, integrationId: "", action: "", riskLevel: "", message: "", params: {} });
 
+    if (!isOpen && !isEmbedded) return null;
+
     const fetchStatus = useCallback(async () => {
         const url = userId ? `/api/integrations/status?userId=${userId}` : "/api/integrations/status";
         const res = await fetch(url);
