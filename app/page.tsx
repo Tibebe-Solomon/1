@@ -80,47 +80,53 @@ export default function HomePage() {
 
   // ── Load conversations from Firestore ──────────────────────────────────────
   const loadConversations = async (userId: string) => {
-    // 1. Fetch Projects
-    const projSnap = await getDocs(
-      query(collection(db, "projects"), where("userId", "==", userId), orderBy("createdAt", "desc"))
-    );
-    const projData = projSnap.docs.map((d) => ({ id: d.id, name: d.data().name as string }));
-    setProjects(projData);
+    try {
+      // 1. Fetch Projects
+      const projSnap = await getDocs(
+        query(collection(db, "projects"), where("userId", "==", userId), orderBy("createdAt", "desc"))
+      );
+      const projData = projSnap.docs.map((d) => ({ id: d.id, name: d.data().name as string }));
+      setProjects(projData);
 
-    // 2. Fetch Conversations
-    const convSnap = await getDocs(
-      query(collection(db, "conversations"), where("userId", "==", userId), orderBy("createdAt", "desc"))
-    );
+      // 2. Fetch Conversations
+      const convSnap = await getDocs(
+        query(collection(db, "conversations"), where("userId", "==", userId), orderBy("createdAt", "desc"))
+      );
 
-    // 3. Fetch all messages for this user's conversations
-    const msgSnap = await getDocs(
-      query(collection(db, "messages"), where("userId", "==", userId), orderBy("createdAt", "asc"))
-    );
+      // 3. Fetch all messages for this user's conversations
+      const msgSnap = await getDocs(
+        query(collection(db, "messages"), where("userId", "==", userId), orderBy("createdAt", "asc"))
+      );
 
-    const messages = msgSnap.docs.map((d) => ({ id: d.id, ...d.data() })) as Array<{
-      id: string; conversationId: string; sender: "user" | "vynthen"; content: string; createdAt: { toDate: () => Date } | null;
-    }>;
+      const messages = msgSnap.docs.map((d) => ({ id: d.id, ...d.data() })) as Array<{
+        id: string; conversationId: string; sender: "user" | "vynthen"; content: string; createdAt: { toDate: () => Date } | null;
+      }>;
 
-    const loaded: Conversation[] = convSnap.docs.map((d) => {
-      const data = d.data();
-      return {
-        id: d.id,
-        title: data.title as string,
-        projectId: data.projectId ?? undefined,
-        messages: messages
-          .filter((m) => m.conversationId === d.id)
-          .map((m) => ({
-            id: m.id,
-            sender: m.sender,
-            content: m.content,
-            createdAt: m.createdAt?.toDate() ?? new Date(),
-          })),
-      };
-    });
+      const loaded: Conversation[] = convSnap.docs.map((d) => {
+        const data = d.data();
+        return {
+          id: d.id,
+          title: data.title as string,
+          projectId: data.projectId ?? undefined,
+          messages: messages
+            .filter((m) => m.conversationId === d.id)
+            .map((m) => ({
+              id: m.id,
+              sender: m.sender,
+              content: m.content,
+              createdAt: m.createdAt?.toDate() ?? new Date(),
+            })),
+        };
+      });
 
-    setConversations(loaded);
-    if (loaded.length > 0) setActiveId(loaded[0].id);
-    setAppState("app");
+      setConversations(loaded);
+      if (loaded.length > 0) setActiveId(loaded[0].id);
+    } catch (err) {
+      console.error("[Firestore Error] Failed to load data:", err);
+      // If this is an index error, the console will show a link to create it.
+    } finally {
+      setAppState("app");
+    }
   };
 
   const handleAuthSuccess = () => {

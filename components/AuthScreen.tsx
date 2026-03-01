@@ -38,10 +38,12 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess, onGuestMo
                 onAuthSuccess();
             } else {
                 await signInWithEmailAndPassword(auth, email, password);
+                console.log("[Auth] Successfully signed in/up with email:", email);
                 onAuthSuccess();
             }
-        } catch (err: unknown) {
-            const msg = err instanceof Error ? err.message : "An unexpected error occurred.";
+        } catch (err: any) {
+            console.error("[Auth Error] Manual auth failed:", err);
+            const msg = err.message || "An unexpected error occurred.";
             setError(msg.replace("Firebase: ", "").replace(/\(auth\/.*\)\.?/, "").trim());
         } finally {
             setLoading(false);
@@ -50,12 +52,13 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess, onGuestMo
 
     const handleGoogleAuth = async () => {
         try {
-            setError(null);
             const provider = new GoogleAuthProvider();
-            await signInWithPopup(auth, provider);
+            const result = await signInWithPopup(auth, provider);
+            console.log("[Auth] Successfully signed in with Google:", result.user.email);
             onAuthSuccess();
-        } catch (err: unknown) {
-            const msg = err instanceof Error ? err.message : "Google sign-in failed.";
+        } catch (err: any) {
+            console.error("[Auth Error] Google auth failed:", err);
+            const msg = err.message || "Google sign-in failed.";
             setError(msg.replace("Firebase: ", "").replace(/\(auth\/.*\)\.?/, "").trim());
         }
     };
